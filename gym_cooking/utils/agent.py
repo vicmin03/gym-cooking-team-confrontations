@@ -33,6 +33,7 @@ class RealAgent:
         self.name = name
         self.color = id_color
         self.recipes = recipes
+        self.team = 1  # what team agent is on - cooperates with same team, opponents with diff. teams
 
         # Bayesian Delegation.
         self.reset_subtasks()
