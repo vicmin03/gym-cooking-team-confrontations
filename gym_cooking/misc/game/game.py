@@ -24,6 +24,11 @@ class Game:
         self.sim_agents = sim_agents
         self.current_agent = self.sim_agents[0]
         self.play = play
+
+        # scores held by teams (how many?)
+        self.font = None
+        self.team1_score = 0
+        self.team2_score = 0
         
         # Visual parameters
         self.scale = 80   # num pixels per tile
@@ -45,6 +50,7 @@ class Game:
         else:
             # Create a hidden surface
             self.screen = pygame.Surface((self.width, self.height))
+        self.font = pygame.font.SysFont(pygame.font.get_default_font(), 36)
         self._running = True
 
 
@@ -72,11 +78,19 @@ class Game:
         # Draw agents and their holdings
         for agent in self.sim_agents:
             self.draw_agent(agent)
+        
+        self.show_score() # displays scores of both teams
 
         if self.play:
             pygame.display.flip()
             pygame.display.update()
 
+
+    def show_score(self):
+        score1 = self.font.render(("Score: " + str(self.team1_score)), True, (255, 0, 0))
+        score2 = self.font.render(("Score: " + str(self.team2_score)), True, (0, 0, 255))
+        self.screen.blit(score1, (10, 10))
+        self.screen.blit(score2, (10, 50))
 
     def draw_gridsquare(self, gs):
         sl = self.scaled_location(gs.location)
@@ -85,6 +99,14 @@ class Game:
         if isinstance(gs, Counter):
             pygame.draw.rect(self.screen, Color.COUNTER, fill)
             pygame.draw.rect(self.screen, Color.COUNTER_BORDER, fill, 1)
+
+        elif isinstance(gs, DeliveryBlue):
+            pygame.draw.rect(self.screen, Color.DELIVERY, fill)
+            self.draw('delivery-blue', self.tile_size, sl)
+
+        elif isinstance(gs, DeliveryRed):
+            pygame.draw.rect(self.screen, Color.DELIVERY, fill)
+            self.draw('delivery-red', self.tile_size, sl)
 
         elif isinstance(gs, Delivery):
             pygame.draw.rect(self.screen, Color.DELIVERY, fill)

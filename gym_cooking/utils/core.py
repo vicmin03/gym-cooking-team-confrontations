@@ -24,6 +24,8 @@ class Rep:
     LETTUCE = 'l'
     ONION = 'o'
     PLATE = 'p'
+    DELIVERYBLUE = '£'
+    DELIVERYRED = "$"
 
 class GridSquare:
     def __init__(self, name, location):
@@ -115,6 +117,17 @@ class Delivery(GridSquare):
     def __hash__(self):
         return GridSquare.__hash__(self)
 
+class DeliveryBlue(Delivery):
+    def __init__(self, location):
+        GridSquare.__init__(self, "DeliveryBlue", location)
+        self.rep = Rep.DELIVERYBLUE
+        self.holding = []
+
+class DeliveryRed(Delivery):
+    def __init__(self, location):
+        GridSquare.__init__(self, "DeliveryBlue", location)
+        self.rep = Rep.DELIVERYBLUE
+        self.holding = []
 
 # -----------------------------------------------------------
 # OBJECTS
@@ -355,6 +368,8 @@ RepToClass = {
     Rep.LETTUCE: globals()['Lettuce'],
     Rep.ONION: globals()['Onion'],
     Rep.PLATE: globals()['Plate'],
+    Rep.DELIVERYBLUE: globals()['DeliveryBlue'],
+    Rep.DELIVERYRED: globals()['DeliveryRed'],
 }
 
 
