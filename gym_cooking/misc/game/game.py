@@ -87,10 +87,17 @@ class Game:
 
 
     def show_score(self):
-        score1 = self.font.render(("Score: " + str(self.team1_score)), True, (255, 0, 0))
-        score2 = self.font.render(("Score: " + str(self.team2_score)), True, (0, 0, 255))
+        score1 = self.font.render(("Score: " + str(self.team1_score)), True, (0, 0, 255))
+        score2 = self.font.render(("Score: " + str(self.team2_score)), True, (255, 0, 0))
         self.screen.blit(score1, (10, 10))
         self.screen.blit(score2, (10, 50))
+
+    def increase_score(self, team):
+        if team == "blue":
+            self.team1_score += 100
+        else:
+            self.team2_score += 100
+
 
     def draw_gridsquare(self, gs):
         sl = self.scaled_location(gs.location)

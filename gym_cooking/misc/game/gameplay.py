@@ -55,7 +55,14 @@ class GamePlay(Game):
             if event.key in KeyToTuple.keys():
                 action = KeyToTuple[event.key]
                 self.current_agent.action = action
-                interact(self.current_agent, self.world)
+                returnVal =  interact(self.current_agent, self.world)
+                if returnVal =="blue":
+                    print("Blue delivered something!!")
+                    self.increase_score("blue")
+                elif returnVal =="red":
+                    print("Red delivered something!!")
+                    self.team2_score += 100
+
 
     def on_execute(self):
         if self.on_init() == False:

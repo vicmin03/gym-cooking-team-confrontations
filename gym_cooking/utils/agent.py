@@ -33,7 +33,7 @@ class RealAgent:
         self.name = name
         self.color = id_color
         self.recipes = recipes
-        self.team = "blue"  # what team agent is on - cooperates with same team, opponents with diff. teams
+        self.team = 1  # what team agent is on - cooperates with same team, opponents with diff. teams
 
         # Bayesian Delegation.
         self.reset_subtasks()
@@ -256,6 +256,9 @@ class RealAgent:
             # Goal state is reached when the number of desired objects has increased.
             self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
 
+    def increaseScore(self):
+        # called to increase team score when delivery is successful to their team
+        sel
 
 class SimAgent:
     """Simulation agent used in the environment object."""

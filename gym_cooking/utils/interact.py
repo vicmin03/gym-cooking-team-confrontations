@@ -28,9 +28,9 @@ def interact(agent, world):
                 agent.release()
                 print('\nDelivered {}!'.format(obj.full_name))
                 if isinstance(gs, DeliveryBlue):
-                    print("\nDelivered to blue team!")
+                    return "blue"
                 elif isinstance(gs, DeliveryRed):
-                    print("\nDelivered to red team!")
+                     return "red"
 
         # if occupied gridsquare in front --> try merging
         elif world.is_occupied(gs.location):

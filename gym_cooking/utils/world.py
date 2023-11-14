@@ -299,4 +299,3 @@ class World:
         x, y = location
         return min(max(x, 0), self.width-1), min(max(y, 0), self.height-1)
 
-    
