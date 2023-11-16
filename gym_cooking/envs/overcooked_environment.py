@@ -149,8 +149,6 @@ class OvercookedEnvironment(gym.Env):
                     # if level is designed for teams
                     if len(self.sim_agents) < num_agents:
                         loc = line.split(' ')
-                        print("Adding agent: " + str(len(self.sim_agents)))
-                        print(str(len(self.sim_agents) % 2) + ", " + str(int(len(self.sim_agents)/2)))
                         sim_agent = SimAgent(
                             name='agent-' + str(len(self.sim_agents) + 1),
                             # id_color=TEAM_COLORS[len(self.sim_agents)%2][len(self.sim_agents)%4],
