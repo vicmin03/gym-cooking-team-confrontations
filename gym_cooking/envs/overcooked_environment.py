@@ -15,7 +15,7 @@ from utils.world import World
 from utils.core import *
 from utils.agent import SimAgent
 from misc.game.gameimage import GameImage
-from utils.agent import COLORS
+from utils.agent import COLORS, TEAM_COLORS
 
 import copy
 import networkx as nx
@@ -97,6 +97,7 @@ class OvercookedEnvironment(gym.Env):
 
             # controls stock of objects in map
             stock = 1
+
             for line in file:
                 line = line.strip('\n')
                 
@@ -105,7 +106,6 @@ class OvercookedEnvironment(gym.Env):
 
                 elif phase == 0:
                     if 'stock' in line:
-                        print("stock: " + line[6:])
                         stock = int(line[6:])
                     else:
                         phase +=1
@@ -137,8 +137,28 @@ class OvercookedEnvironment(gym.Env):
                 elif phase == 2:
                     self.recipes.append(globals()[line]())
 
-                # Phase 3: Read in agent locations (up to num_agents).
+                # phase 3: Read whether teams (competitive) mode or coop mode
                 elif phase == 3:
+                    if 'teams' in line:
+                        phase = 4
+                    else:
+                        phase = 5
+
+                # Phase 4: Read in agent locations (up to num_agents) for agents on teams.
+                elif phase == 4:
+                    # if level is designed for teams
+                    if len(self.sim_agents) < num_agents:
+                        loc = line.split(' ')
+                        print("Adding agent: " + str(len(self.sim_agents)))
+                        print(str(len(self.sim_agents) % 2) + ", " + str(int(len(self.sim_agents)/2)))
+                        sim_agent = SimAgent(
+                            name='agent-' + str(len(self.sim_agents) + 1),
+                            # id_color=TEAM_COLORS[len(self.sim_agents)%2][len(self.sim_agents)%4],
+                            id_color=TEAM_COLORS[len(self.sim_agents) % 2][int(len(self.sim_agents)/2)],
+                            location=(int(loc[0]), int(loc[1])))
+                        self.sim_agents.append(sim_agent)
+
+                elif phase == 5:
                     if len(self.sim_agents) < num_agents:
                         loc = line.split(' ')
                         sim_agent = SimAgent(

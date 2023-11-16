@@ -23,6 +23,7 @@ AgentRepr = namedtuple("AgentRepr", "name location holding")
 
 # Colors for agents.
 COLORS = ['blue', 'magenta', 'yellow', 'green']
+TEAM_COLORS = [['blue-team-blue', 'magenta-team-blue', 'yellow-team-blue', 'green-team-blue'], ['cat-blue-team-red', 'cat-grey-team-red', 'cat-orange-team-red', 'cat-yellow-team-red']]
 
 
 class RealAgent:
