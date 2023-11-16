@@ -107,6 +107,10 @@ class Game:
             pygame.draw.rect(self.screen, Color.COUNTER, fill)
             pygame.draw.rect(self.screen, Color.COUNTER_BORDER, fill, 1)
 
+        if isinstance(gs, SpawnCounter):
+            pygame.draw.rect(self.screen, Color.COUNTER, fill)
+            pygame.draw.rect(self.screen, Color.COUNTER_BORDER, fill, 1)
+
         elif isinstance(gs, DeliveryBlue):
             pygame.draw.rect(self.screen, Color.DELIVERY, fill)
             self.draw('delivery-blue', self.tile_size, sl)

@@ -44,9 +44,9 @@ def interact(agent, world):
                 agent.acquire(obj)
                 world.insert(agent.holding)
                 # if playable version, merge onto counter first
-                if world.arglist.play:
-                    gs.acquire(agent.holding)
-                    agent.release()
+                # if world.arglist.play:
+                #     gs.acquire(agent.holding)
+                #     agent.release()
 
 
         # if holding something, empty gridsquare in front --> chop or drop

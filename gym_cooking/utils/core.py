@@ -73,6 +73,31 @@ class Counter(GridSquare):
     def __init__(self, location):
         GridSquare.__init__(self,"Counter", location)
         self.rep = Rep.COUNTER
+        self.holding = []
+    def __eq__(self, other):
+        return GridSquare.__eq__(self, other)
+    def __hash__(self):
+        return GridSquare.__hash__(self)
+
+# counter which holds food initially - may have infinite or limited supply
+class SpawnCounter(GridSquare):
+    def __init__(self, location, stock):
+        GridSquare.__init__(self,"Counter", location)
+        self.rep = Rep.COUNTER
+        self.stock = stock
+        self.holding = []
+
+    # def release(self):
+    #     # taking from this counter reduces the amount available by 1 until there are none left
+    #     if self.stock == 0:
+    #         self.holding = []
+    #         return None
+    #     else:
+    #         self.stock -= 1
+    #         print(self.holding)
+    #         return self.holding
+    #         # return self.holding[0]
+
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
@@ -117,6 +142,7 @@ class Delivery(GridSquare):
     def __hash__(self):
         return GridSquare.__hash__(self)
 
+# two different types of delivery space for playing with teams
 class DeliveryBlue(Delivery):
     def __init__(self, location):
         GridSquare.__init__(self, "DeliveryBlue", location)
@@ -125,8 +151,8 @@ class DeliveryBlue(Delivery):
 
 class DeliveryRed(Delivery):
     def __init__(self, location):
-        GridSquare.__init__(self, "DeliveryBlue", location)
-        self.rep = Rep.DELIVERYBLUE
+        GridSquare.__init__(self, "DeliveryRed", location)
+        self.rep = Rep.DELIVERYRED
         self.holding = []
 
 # -----------------------------------------------------------

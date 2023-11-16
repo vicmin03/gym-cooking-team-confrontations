@@ -278,12 +278,14 @@ class World:
             objs = list(filter(
                 lambda obj: obj.location == location and isinstance(obj, Object) and obj.is_held is find_held_objects,
                 all_objs))
+            print(objs)
+            print(objs)
         else:
             objs = list(filter(lambda obj: obj.name == desired_obj.name and obj.location == location and
                 isinstance(obj, Object) and obj.is_held is find_held_objects,
                 all_objs))
 
-        assert len(objs) == 1, "looking for {}, found {} at {}".format(desired_obj, ','.join(o.get_name() for o in objs), location)
+        # assert len(objs) == 1, "looking for {}, found {} at {}".format(desired_obj, ','.join(o.get_name() for o in objs), location)
 
         return objs[0]
 

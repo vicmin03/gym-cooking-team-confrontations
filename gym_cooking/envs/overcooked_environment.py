@@ -93,24 +93,37 @@ class OvercookedEnvironment(gym.Env):
         y = 0
         with open('utils/levels/{}.txt'.format(level), 'r') as file:
             # Mark the phases of reading.
-            phase = 1
+            phase = 0
+
+            # controls stock of objects in map
+            stock = 1
             for line in file:
                 line = line.strip('\n')
+                
                 if line == '':
                     phase += 1
+
+                elif phase == 0:
+                    if 'stock' in line:
+                        print("stock: " + line[6:])
+                        stock = int(line[6:])
+                    else:
+                        phase +=1
 
                 # Phase 1: Read in kitchen map.
                 elif phase == 1:
                     for x, rep in enumerate(line):
                         # Object, i.e. Tomato, Lettuce, Onion, or Plate.
                         if rep in 'tlop':
-                            counter = Counter(location=(x, y))
-                            obj = Object(
-                                    location=(x, y),
-                                    contents=RepToClass[rep]())
-                            counter.acquire(obj=obj)
+                            # creates as many of item as needed at counter location
+                            counter = SpawnCounter(location=(x, y), stock=stock)
+                            for i in range (0, stock):
+                                obj = Object(
+                                        location=(x, y),
+                                        contents=RepToClass[rep]())
+                                counter.acquire(obj=obj)
+                                self.world.insert(obj)
                             self.world.insert(obj=counter)
-                            self.world.insert(obj=obj)
                         # GridSquare, i.e. Floor, Counter, Cutboard, Delivery.
                         elif rep in RepToClass:
                             newobj = RepToClass[rep]((x, y))
