@@ -116,7 +116,7 @@ class OvercookedEnvironment(gym.Env):
                         # Object, i.e. Tomato, Lettuce, Onion, or Plate.
                         if rep in 'tlop':
                             # creates as many of item as needed at counter location
-                            counter = SpawnCounter(location=(x, y), stock=stock)
+                            counter = SpawnCounter(location=(x, y))
                             for i in range (0, stock):
                                 obj = Object(
                                         location=(x, y),
@@ -137,7 +137,7 @@ class OvercookedEnvironment(gym.Env):
                 elif phase == 2:
                     self.recipes.append(globals()[line]())
 
-                # phase 3: Read whether teams (competitive) mode or coop mode
+                # Phase 3: Read whether teams (competitive) mode or coop mode
                 elif phase == 3:
                     if 'teams' in line:
                         phase = 4
@@ -151,18 +151,18 @@ class OvercookedEnvironment(gym.Env):
                         loc = line.split(' ')
                         sim_agent = SimAgent(
                             name='agent-' + str(len(self.sim_agents) + 1),
-                            # id_color=TEAM_COLORS[len(self.sim_agents)%2][len(self.sim_agents)%4],
                             id_color=TEAM_COLORS[len(self.sim_agents) % 2][int(len(self.sim_agents)/2)],
                             location=(int(loc[0]), int(loc[1])))
+
                         self.sim_agents.append(sim_agent)
 
                 elif phase == 5:
                     if len(self.sim_agents) < num_agents:
                         loc = line.split(' ')
                         sim_agent = SimAgent(
-                                name='agent-'+str(len(self.sim_agents)+1),
-                                id_color=COLORS[len(self.sim_agents)],
-                                location=(int(loc[0]), int(loc[1])))
+                            name='agent-'+str(len(self.sim_agents)+1),
+                            id_color=COLORS[len(self.sim_agents)],
+                            location=(int(loc[0]), int(loc[1])))
                         self.sim_agents.append(sim_agent)
 
         self.distances = {}

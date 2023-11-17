@@ -26,6 +26,7 @@ class Rep:
     PLATE = 'p'
     DELIVERYBLUE = '£'
     DELIVERYRED = "$"
+    TRASHCAN = '#'
 
 class GridSquare:
     def __init__(self, name, location):
@@ -64,6 +65,7 @@ class Floor(GridSquare):
         self.color = None
         self.rep = Rep.FLOOR
         self.collidable = False
+        self.occupied = False
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
@@ -81,22 +83,10 @@ class Counter(GridSquare):
 
 # counter which holds food initially - may have infinite or limited supply
 class SpawnCounter(GridSquare):
-    def __init__(self, location, stock):
+    def __init__(self, location):
         GridSquare.__init__(self,"Counter", location)
         self.rep = Rep.COUNTER
-        self.stock = stock
         self.holding = []
-
-    # def release(self):
-    #     # taking from this counter reduces the amount available by 1 until there are none left
-    #     if self.stock == 0:
-    #         self.holding = []
-    #         return None
-    #     else:
-    #         self.stock -= 1
-    #         print(self.holding)
-    #         return self.holding
-    #         # return self.holding[0]
 
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
@@ -154,6 +144,12 @@ class DeliveryRed(Delivery):
         GridSquare.__init__(self, "DeliveryRed", location)
         self.rep = Rep.DELIVERYRED
         self.holding = []
+
+class Trashcan(GridSquare):
+    def __init__(self, location):
+        GridSquare.__init__(self, "Trashcan", location)
+        self.rep = Rep.TRASHCAN
+
 
 # -----------------------------------------------------------
 # OBJECTS
@@ -396,6 +392,7 @@ RepToClass = {
     Rep.PLATE: globals()['Plate'],
     Rep.DELIVERYBLUE: globals()['DeliveryBlue'],
     Rep.DELIVERYRED: globals()['DeliveryRed'],
+    Rep.TRASHCAN: globals()['Trashcan'],
 }
 
 

@@ -17,6 +17,14 @@ def interact(agent, world):
     # if floor in front --> move to that square
     if isinstance(gs, Floor): #and gs.holding is None:
         agent.move_to(gs.location)
+        # if not gs.occupied:
+        #     prev = world.get_gridsquare_at(agent.location).toggleOccupied()
+        #     agent.move_to(gs.location)
+        #     gs.toggleOccupied()
+        # else:
+        #     print("can't move here")
+
+        
 
     # if holding something
     elif agent.holding is not None:
@@ -31,6 +39,13 @@ def interact(agent, world):
                     return "blue"
                 elif isinstance(gs, DeliveryRed):
                      return "red"
+        
+        # if trashcan in front --> delete object
+        elif isinstance(gs, Trashcan):
+            obj = agent.holding
+            world.remove(obj)
+            agent.release()
+
 
         # if occupied gridsquare in front --> try merging
         elif world.is_occupied(gs.location):
