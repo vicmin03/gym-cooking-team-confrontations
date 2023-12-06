@@ -102,6 +102,7 @@ class BayesianDelegator(Delegator):
         (subtask x subtask_agent_names)."""
         if subtask is None:
             return 0
+        print(subtask_agent_names)
         _ = self.planner.get_next_action(
                 env=obs,
                 subtask=subtask,

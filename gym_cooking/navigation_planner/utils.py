@@ -159,6 +159,7 @@ def get_subtask_action_obj(subtask):
     return obj
 
 def get_subtask_obj(subtask):
+
     if isinstance(subtask, recipe.Chop):
         # start off raw, get chopped
         start_obj = get_obj(obj_string=subtask.args[0],
@@ -199,6 +200,10 @@ def get_subtask_obj(subtask):
         start_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=state)
         goal_obj = copy.copy(start_obj)
+    #
+    # elif isinstance(subtask, recipe.Get):
+    #     get_subtask_action_obj(subtask)
+    #     print("HELP ME JESUS")
 
     elif subtask is None:
         return None, None

@@ -264,7 +264,7 @@ class OvercookedEnvironment(gym.Env):
             if isinstance(subtask, recipe.Deliver):
                 _, goal_obj = nav_utils.get_subtask_obj(subtask)
 
-                delivery_loc = list(filter(lambda o: o.name=='Delivery', self.world.get_object_list()))[0].location
+                delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
                 goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
                 if not any([gol == delivery_loc for gol in goal_obj_locs]):
                     self.termination_info = ""

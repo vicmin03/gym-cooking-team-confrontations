@@ -112,6 +112,7 @@ class World:
 
     @lru_cache(maxsize=40000)
     def get_lower_bound_between_helper(self, subtask, agent_locs, A_loc, B_loc):
+        bound = 0
         lower_bound = self.perimeter + 1
         A = self.get_gridsquare_at(A_loc)
         B = self.get_gridsquare_at(B_loc)
@@ -178,7 +179,11 @@ class World:
                             bound_1_to_B=bound_1_to_B,
                             bound_2_to_B=bound_2_to_B
                             )
+                    print("Wanna merge")
                     bound = max(min_bound_to_A, min_bound_to_B) + (bound_between_agents - 1)/2
+                else:
+                    print("Well fuck")
+
 
             if bound < lower_bound:
                 lower_bound = bound
@@ -283,7 +288,7 @@ class World:
                 isinstance(obj, Object) and obj.is_held is find_held_objects,
                 all_objs))
 
-        # assert len(objs) == 1, "looking for {}, found {} at {}".format(desired_obj, ','.join(o.get_name() for o in objs), location)
+        assert len(objs) == 1, "looking for {}, found {} at {}".format(desired_obj, ','.join(o.get_name() for o in objs), location)
 
         return objs[0]
 
@@ -295,7 +300,6 @@ class World:
         return gss[0]
 
     def inbounds(self, location):
-        """Correct location to be in bounds of world object."""
+        """Correct locaiton to be in bounds of world object."""
         x, y = location
         return min(max(x, 0), self.width-1), min(max(y, 0), self.height-1)
-

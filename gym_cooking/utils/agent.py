@@ -273,7 +273,8 @@ class SimAgent:
         self.has_delivered = False
 
     def __str__(self):
-        return color(self.name[-1], self.color)
+        return self.color
+        # return color(self.name[-1], self.color)
 
     def __copy__(self):
         a = SimAgent(name=self.name, id_color=self.color,
@@ -292,8 +293,13 @@ class SimAgent:
         return self.holding.full_name
 
     def print_status(self):
+        # print("{} currently at {}, action {}, holding {}".format(
+        #         color(self.name, self.color),
+        #         self.location,
+        #         self.action,
+        #         self.get_holding()))
         print("{} currently at {}, action {}, holding {}".format(
-                color(self.name, self.color),
+                self.color,
                 self.location,
                 self.action,
                 self.get_holding()))

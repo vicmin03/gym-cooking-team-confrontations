@@ -131,6 +131,8 @@ class Delivery(GridSquare):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
         return GridSquare.__hash__(self)
+    def get_repr(self):
+        return GridSquareRepr(name=self.name, location=self.location, holding= None)
 
 # two different types of delivery space for playing with teams
 class DeliveryBlue(Delivery):
@@ -149,6 +151,8 @@ class Trashcan(GridSquare):
     def __init__(self, location):
         GridSquare.__init__(self, "Trashcan", location)
         self.rep = Rep.TRASHCAN
+    def get_repr(self):
+        return GridSquareRepr(name=self.name, location=self.location, holding= None)
 
 
 # -----------------------------------------------------------

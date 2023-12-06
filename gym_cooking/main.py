@@ -2,7 +2,7 @@
 # from gym_cooking.envs import OvercookedEnvironment
 from recipe_planner.recipe import *
 from utils.world import World
-from utils.agent import RealAgent, SimAgent, COLORS
+from utils.agent import RealAgent, SimAgent, COLORS, TEAM_COLORS
 from utils.core import *
 from misc.game.gameplay import GamePlay
 from misc.metrics.metrics_bag import Bag
@@ -46,6 +46,10 @@ def parse_arguments():
     parser.add_argument("--model2", type=str, default=None, help="Model type for agent 2 (bd, up, dc, fb, or greedy)")
     parser.add_argument("--model3", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, or greedy)")
     parser.add_argument("--model4", type=str, default=None, help="Model type for agent 4 (bd, up, dc, fb, or greedy)")
+    parser.add_argument("--model5", type=str, default=None, help="Model type for agent 1 (bd, up, dc, fb, or greedy)")
+    parser.add_argument("--model6", type=str, default=None, help="Model type for agent 2 (bd, up, dc, fb, or greedy)")
+    parser.add_argument("--model7", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, or greedy)")
+    parser.add_argument("--model8", type=str, default=None, help="Model type for agent 4 (bd, up, dc, fb, or greedy)")
 
     return parser.parse_args()
 
@@ -58,26 +62,50 @@ def initialize_agents(arglist):
     real_agents = []
 
     with open('utils/levels/{}.txt'.format(arglist.level), 'r') as f:
-        phase = 1
+        phase = 0
         recipes = []
         for line in f:
             line = line.strip('\n')
             if line == '':
                 phase += 1
 
+            elif phase == 0:
+                if 'stock' not in line:
+                    phase +=1
+
             # phase 2: read in recipe list
             elif phase == 2:
+                print(line)
                 recipes.append(globals()[line]())
 
-            # phase 3: read in agent locations (up to num_agents)
+            # Phase 3: Read whether teams (competitive) mode or coop mode
             elif phase == 3:
+
+                if 'teams' in line:
+                    phase = 4
+                else:
+                    phase = 5
+
+            # phase 4: read in agent locations (up to num_agents) for teams
+            elif phase == 4:
                 if len(real_agents) < arglist.num_agents:
                     loc = line.split(' ')
                     real_agent = RealAgent(
                             arglist=arglist,
                             name='agent-'+str(len(real_agents)+1),
-                            id_color=COLORS[len(real_agents)],
+                            id_color=TEAM_COLORS[len(real_agents) % 2][int(len(real_agents)/2)],
                             recipes=recipes)
+                    real_agents.append(real_agent)
+
+            # phase 5: read in agent locations when not in teams
+            elif phase == 5:
+                if len(real_agents) < arglist.num_agents:
+                    loc = line.split(' ')
+                    real_agent = RealAgent(
+                        arglist=arglist,
+                        name='agent-' + str(len(real_agents) + 1),
+                        id_color=COLORS[len(real_agents)],
+                        recipes=recipes)
                     real_agents.append(real_agent)
 
     return real_agents
@@ -124,7 +152,7 @@ if __name__ == '__main__':
         game = GamePlay(env.filename, env.world, env.sim_agents)
         game.on_execute()
     else:
-        model_types = [arglist.model1, arglist.model2, arglist.model3, arglist.model4]
+        model_types = [arglist.model1, arglist.model2, arglist.model3, arglist.model4, arglist.model5, arglist.model6, arglist.model7, arglist.model8]
         assert len(list(filter(lambda x: x is not None,
             model_types))) == arglist.num_agents, "num_agents should match the number of models specified"
         fix_seed(seed=arglist.seed)

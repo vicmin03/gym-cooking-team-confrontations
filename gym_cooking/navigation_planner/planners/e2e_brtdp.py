@@ -328,7 +328,8 @@ class E2E_BRTDP:
 
     def _configure_planner_space(self, subtask_agent_names):
         """Configure planner to either plan in joint space or single-agent space."""
-        assert len(subtask_agent_names) <= 2, "Cannot have more than 2 agents! Hm... {}".format(subtask_agents)
+        # print(subtask_agent_names)
+        assert len(subtask_agent_names) <= 2, "Cannot have more than 2 agents! Hm... {}".format(subtask_agent_names)
 
         self.is_joint = len(subtask_agent_names) == 2
 
@@ -339,6 +340,8 @@ class E2E_BRTDP:
                 env=env,
                 subtask_agent_names=subtask_agent_names,
                 other_agent_planners=other_agent_planners)
+
+        print(subtask_agent_names)
 
         # Configuring subtask related information.
         self._configure_subtask_information(
