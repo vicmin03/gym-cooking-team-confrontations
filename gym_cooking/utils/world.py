@@ -288,8 +288,7 @@ class World:
                 isinstance(obj, Object) and obj.is_held is find_held_objects,
                 all_objs))
 
-        assert len(objs) == 1, "looking for {}, found {} at {}".format(desired_obj, ','.join(o.get_name() for o in objs), location)
-
+        # may have multiple objects at a single location, when they are from initial spawn location
         return objs[0]
 
     def get_gridsquare_at(self, location):

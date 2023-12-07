@@ -193,6 +193,9 @@ class Object:
     def get_repr(self):
         return ObjectRepr(name=self.full_name, location=self.location, is_held=self.is_held)
 
+    def get_name(self):
+        return self.full_name
+
     def update_names(self):
         # concatenate names of alphabetically sorted items, e.g.
         sorted_contents = sorted(self.contents, key=lambda c: c.name)
