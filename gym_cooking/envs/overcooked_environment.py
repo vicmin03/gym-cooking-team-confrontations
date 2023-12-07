@@ -354,7 +354,7 @@ class OvercookedEnvironment(gym.Env):
     def get_lower_bound_for_subtask_given_objs(
             self, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
         """Return the lower bound distance (shortest path) under this subtask between objects."""
-        assert len(subtask_agent_names) <= 2, 'passed in {} agents but can only do 1 or 2'.format(len(agents))
+        assert len(subtask_agent_names) <= 4, 'passed in {} agents but can only do 1 or 2'.format(len(agents))
 
         # Calculate extra holding penalty if the object is irrelevant.
         holding_penalty = 0.0

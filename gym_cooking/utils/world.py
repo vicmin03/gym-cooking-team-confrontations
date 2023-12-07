@@ -300,6 +300,6 @@ class World:
         return gss[0]
 
     def inbounds(self, location):
-        """Correct locaiton to be in bounds of world object."""
+        """Correct location to be in bounds of world object."""
         x, y = location
         return min(max(x, 0), self.width-1), min(max(y, 0), self.height-1)
