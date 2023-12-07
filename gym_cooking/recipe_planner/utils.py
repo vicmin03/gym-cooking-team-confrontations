@@ -55,7 +55,9 @@ class Merged(Predicate):
     def __init__(self, obj):
         Predicate.__init__(self, 'Merged', (obj,))
 
-
+class Trashed(Predicate):
+    def __init__(self, obj):
+        Predicate.__init__(self, 'Trashed', (obj,))
 
 
 # ACTIONS
@@ -160,6 +162,17 @@ class Deliver(Action):
         self.pre_default = [Merged(obj)]
         self.post_add_default = [Delivered(obj)]
         Action.__init__(self, 'Deliver', pre, post_add)
+'''
+Trash(X)
+Pre: SomeState(X), 
+Post: !SomeState(X), Removed(X)
+'''
+class Trash(Action):
+    def __init__(self, obj, pre=None, post_add=None):
+        self.args = (obj,)
+        self.pre_default = [Merged(obj)]
+        self.post_add_default = [Trashed(obj)]
+        Action.__init__(self, 'Trash', pre, post_add)
 
 
 

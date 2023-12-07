@@ -201,7 +201,7 @@ class RealAgent:
             self.action = actions[np.random.choice(len(actions), p=probs)]
         # Otherwise, plan accordingly.
         else:
-            if self.model_type == 'greedy' or initializing_priors:
+            if self.model_type == 'greedy' or self.model_type == 'random' or initializing_priors:
                 other_agent_planners = {}
             else:
                 # Determine other agent planners for level 1 planning.

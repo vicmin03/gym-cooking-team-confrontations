@@ -52,6 +52,8 @@ def is_smaller(p_, p):
         return p_[0] < p
     else: return  p_ < p
 
+
+# returns list of all possible actions an agent can perform
 def get_single_actions(env, agent):
     actions = []
 
@@ -199,6 +201,9 @@ def get_subtask_obj(subtask):
         start_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=state)
         goal_obj = copy.copy(start_obj)
+
+    elif isinstance(subtask, recipe.Trash):
+        start
 
     elif subtask is None:
         return None, None

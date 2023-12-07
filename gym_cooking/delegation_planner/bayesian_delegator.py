@@ -405,7 +405,7 @@ class BayesianDelegator(Delegator):
     def select_subtask(self, agent_name):
         """Return subtask and subtask_agent_names for agent with agent_name
         with max. probability."""
-        max_subtask_alloc = self.probs.get_max()
+        max_subtask_alloc = self.probs.get_max()  # get the most likely allocation of subtasks
         if max_subtask_alloc is not None:
             for t in max_subtask_alloc:
                 if agent_name in t.subtask_agent_names:
