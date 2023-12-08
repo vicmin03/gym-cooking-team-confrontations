@@ -71,6 +71,9 @@ def get_single_actions(env, agent):
             # Can interact with deliveries
             elif isinstance(gs, Delivery):
                 actions.append(t)
+            # Can interact with trashcan space to throw food away
+            elif isinstance(gs, Trashcan):
+                actions.append(t)
             # Can interact with others if at least one of me or gs is holding something, or mergeable
             elif gs.holding is None and agent.holding is not None:
                 actions.append(t)

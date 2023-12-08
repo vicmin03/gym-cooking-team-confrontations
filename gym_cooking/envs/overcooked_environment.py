@@ -15,7 +15,7 @@ from utils.world import World
 from utils.core import *
 from utils.agent import SimAgent
 from misc.game.gameimage import GameImage
-from utils.agent import COLORS
+from utils.agent import COLORS, TEAM_COLORS
 
 import copy
 import networkx as nx
@@ -26,7 +26,6 @@ from collections import namedtuple
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
-
 
 CollisionRepr = namedtuple("CollisionRepr", "time agent_names agent_locations")
 
@@ -69,14 +68,14 @@ class OvercookedEnvironment(gym.Env):
         for a in new_env.sim_agents:
             if a.holding is not None:
                 a.holding = new_env.world.get_object_at(
-                        location=a.location,
-                        desired_obj=None,
-                        find_held_objects=True)
+                    location=a.location,
+                    desired_obj=None,
+                    find_held_objects=True)
         return new_env
 
     def set_filename(self):
-        self.filename = "{}_agents{}_seed{}".format(self.arglist.level,\
-            self.arglist.num_agents, self.arglist.seed)
+        self.filename = "{}_agents{}_seed{}".format(self.arglist.level, \
+                                                    self.arglist.num_agents, self.arglist.seed)
         model = ""
         if self.arglist.model1 is not None:
             model += "_model1-{}".format(self.arglist.model1)
@@ -93,24 +92,37 @@ class OvercookedEnvironment(gym.Env):
         y = 0
         with open('utils/levels/{}.txt'.format(level), 'r') as file:
             # Mark the phases of reading.
-            phase = 1
+            phase = 0
+
+            # controls stock of objects in map
+            stock = 1
+
             for line in file:
                 line = line.strip('\n')
+
                 if line == '':
                     phase += 1
+
+                elif phase == 0:
+                    if 'stock' in line:
+                        stock = int(line[6:])
+                    else:
+                        phase += 1
 
                 # Phase 1: Read in kitchen map.
                 elif phase == 1:
                     for x, rep in enumerate(line):
                         # Object, i.e. Tomato, Lettuce, Onion, or Plate.
                         if rep in 'tlop':
-                            counter = Counter(location=(x, y))
-                            obj = Object(
+                            # creates as many of item as needed at counter location
+                            counter = SpawnCounter(location=(x, y))
+                            for i in range(0, stock):
+                                obj = Object(
                                     location=(x, y),
                                     contents=RepToClass[rep]())
-                            counter.acquire(obj=obj)
+                                counter.acquire(obj=obj)
+                                self.world.insert(obj)
                             self.world.insert(obj=counter)
-                            self.world.insert(obj=obj)
                         # GridSquare, i.e. Floor, Counter, Cutboard, Delivery.
                         elif rep in RepToClass:
                             newobj = RepToClass[rep]((x, y))
@@ -124,21 +136,38 @@ class OvercookedEnvironment(gym.Env):
                 elif phase == 2:
                     self.recipes.append(globals()[line]())
 
-                # Phase 3: Read in agent locations (up to num_agents).
+                # Phase 3: Read whether teams (competitive) mode or coop mode
                 elif phase == 3:
+                    if 'teams' in line:
+                        phase = 4
+                    else:
+                        phase = 5
+
+                # Phase 4: Read in agent locations (up to num_agents) for agents on teams.
+                elif phase == 4:
+                    # if level is designed for teams
                     if len(self.sim_agents) < num_agents:
                         loc = line.split(' ')
                         sim_agent = SimAgent(
-                                name='agent-'+str(len(self.sim_agents)+1),
-                                id_color=COLORS[len(self.sim_agents)],
-                                location=(int(loc[0]), int(loc[1])))
+                            name='agent-' + str(len(self.sim_agents) + 1),
+                            id_color=TEAM_COLORS[len(self.sim_agents) % 2][int(len(self.sim_agents) / 2)],
+                            location=(int(loc[0]), int(loc[1])))
+
+                        self.sim_agents.append(sim_agent)
+
+                elif phase == 5:
+                    if len(self.sim_agents) < num_agents:
+                        loc = line.split(' ')
+                        sim_agent = SimAgent(
+                            name='agent-' + str(len(self.sim_agents) + 1),
+                            id_color=COLORS[len(self.sim_agents)],
+                            location=(int(loc[0]), int(loc[1])))
                         self.sim_agents.append(sim_agent)
 
         self.distances = {}
-        self.world.width = x+1
+        self.world.width = x + 1
         self.world.height = y
-        self.world.perimeter = 2*(self.world.width + self.world.height)
-
+        self.world.perimeter = 2 * (self.world.width + self.world.height)
 
     def reset(self):
         self.world = World(arglist=self.arglist)
@@ -157,8 +186,8 @@ class OvercookedEnvironment(gym.Env):
 
         # Load world & distances.
         self.load_level(
-                level=self.arglist.level,
-                num_agents=self.arglist.num_agents)
+            level=self.arglist.level,
+            num_agents=self.arglist.num_agents)
         self.all_subtasks = self.run_recipes()
         self.world.make_loc_to_gridsquare()
         self.world.make_reachability_graph()
@@ -167,10 +196,10 @@ class OvercookedEnvironment(gym.Env):
 
         if self.arglist.record or self.arglist.with_image_obs:
             self.game = GameImage(
-                    filename=self.filename,
-                    world=self.world,
-                    sim_agents=self.sim_agents,
-                    record=self.arglist.record)
+                filename=self.filename,
+                world=self.world,
+                sim_agents=self.sim_agents,
+                record=self.arglist.record)
             self.game.on_init()
             if self.arglist.record:
                 self.game.save_image_obs(self.t)
@@ -216,12 +245,11 @@ class OvercookedEnvironment(gym.Env):
                 "done": done, "termination_info": self.termination_info}
         return new_obs, reward, done, info
 
-
     def done(self):
         # Done if the episode maxes out
         if self.t >= self.arglist.max_num_timesteps and self.arglist.max_num_timesteps:
             self.termination_info = "Terminating because passed {} timesteps".format(
-                    self.arglist.max_num_timesteps)
+                self.arglist.max_num_timesteps)
             self.successful = False
             return True
 
@@ -233,7 +261,8 @@ class OvercookedEnvironment(gym.Env):
             if isinstance(subtask, recipe.Deliver):
                 _, goal_obj = nav_utils.get_subtask_obj(subtask)
 
-                delivery_loc = list(filter(lambda o: o.name=='Delivery', self.world.get_object_list()))[0].location
+                delivery_loc = list(filter(lambda o: o.name == 'Delivery' or 'DeliveryBlue' or 'DeliveryRed',
+                                           self.world.get_object_list()))[0].location
                 goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
                 if not any([gol == delivery_loc for gol in goal_obj_locs]):
                     self.termination_info = ""
@@ -261,7 +290,6 @@ class OvercookedEnvironment(gym.Env):
             x, y = agent.location
             self.rep[y][x] = str(agent)
 
-
     def get_agent_names(self):
         return [agent.name for agent in self.sim_agents]
 
@@ -284,8 +312,10 @@ class OvercookedEnvironment(gym.Env):
         # chopped and the cutting board objects.
         if isinstance(subtask, recipe.Chop):
             # A: Object that can be chopped.
-            A_locs = self.world.get_object_locs(obj=start_obj, is_held=False) + list(map(lambda a: a.location,\
-                list(filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+            A_locs = self.world.get_object_locs(obj=start_obj, is_held=False) + list(map(lambda a: a.location, \
+                                                                                         list(filter(lambda
+                                                                                                         a: a.name in subtask_agent_names and a.holding == start_obj,
+                                                                                                     self.sim_agents))))
 
             # B: Cutboard objects.
             B_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
@@ -298,22 +328,22 @@ class OvercookedEnvironment(gym.Env):
 
             # A: Object that can be delivered.
             A_locs = self.world.get_object_locs(
-                    obj=start_obj, is_held=False) + list(
-                            map(lambda a: a.location, list(
-                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+                obj=start_obj, is_held=False) + list(
+                map(lambda a: a.location, list(
+                    filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
             A_locs = list(filter(lambda a: a not in B_locs, A_locs))
 
         # For Merge operator on Merge subtasks, we look at objects that can be
         # combined together. These objects are all ingredient objects (e.g. Tomato, Lettuce).
         elif isinstance(subtask, recipe.Merge):
             A_locs = self.world.get_object_locs(
-                    obj=start_obj[0], is_held=False) + list(
-                            map(lambda a: a.location, list(
-                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj[0], self.sim_agents))))
+                obj=start_obj[0], is_held=False) + list(
+                map(lambda a: a.location, list(
+                    filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj[0], self.sim_agents))))
             B_locs = self.world.get_object_locs(
-                    obj=start_obj[1], is_held=False) + list(
-                            map(lambda a: a.location, list(
-                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj[1], self.sim_agents))))
+                obj=start_obj[1], is_held=False) + list(
+                map(lambda a: a.location, list(
+                    filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj[1], self.sim_agents))))
 
         else:
             return [], []
@@ -323,7 +353,7 @@ class OvercookedEnvironment(gym.Env):
     def get_lower_bound_for_subtask_given_objs(
             self, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
         """Return the lower bound distance (shortest path) under this subtask between objects."""
-        assert len(subtask_agent_names) <= 2, 'passed in {} agents but can only do 1 or 2'.format(len(agents))
+        assert len(subtask_agent_names) <= 4, 'passed in {} agents but can only do 1 or 2'.format(len(agents))
 
         # Calculate extra holding penalty if the object is irrelevant.
         holding_penalty = 0.0
@@ -341,20 +371,21 @@ class OvercookedEnvironment(gym.Env):
         holding_penalty = min(holding_penalty, 1)
 
         # Get current agent locations.
-        agent_locs = [agent.location for agent in list(filter(lambda a: a.name in subtask_agent_names, self.sim_agents))]
+        agent_locs = [agent.location for agent in
+                      list(filter(lambda a: a.name in subtask_agent_names, self.sim_agents))]
         A_locs, B_locs = self.get_AB_locs_given_objs(
-                subtask=subtask,
-                subtask_agent_names=subtask_agent_names,
-                start_obj=start_obj,
-                goal_obj=goal_obj,
-                subtask_action_obj=subtask_action_obj)
+            subtask=subtask,
+            subtask_agent_names=subtask_agent_names,
+            start_obj=start_obj,
+            goal_obj=goal_obj,
+            subtask_action_obj=subtask_action_obj)
 
         # Add together distance and holding_penalty.
         return self.world.get_lower_bound_between(
-                subtask=subtask,
-                agent_locs=tuple(agent_locs),
-                A_locs=tuple(A_locs),
-                B_locs=tuple(B_locs)) + holding_penalty
+            subtask=subtask,
+            agent_locs=tuple(agent_locs),
+            A_locs=tuple(A_locs),
+            B_locs=tuple(B_locs)) + holding_penalty
 
     def is_collision(self, agent1_loc, agent2_loc, agent1_action, agent2_action):
         """Returns whether agents are colliding.
@@ -386,7 +417,7 @@ class OvercookedEnvironment(gym.Env):
 
         # Prevent agents from swapping places.
         elif ((agent1_loc == agent2_next_loc) and
-                (agent2_loc == agent1_next_loc)):
+              (agent2_loc == agent1_next_loc)):
             execute[0] = False
             execute[1] = False
         return execute
@@ -401,10 +432,10 @@ class OvercookedEnvironment(gym.Env):
         for i, j in combinations(range(len(self.sim_agents)), 2):
             agent_i, agent_j = self.sim_agents[i], self.sim_agents[j]
             exec_ = self.is_collision(
-                    agent1_loc=agent_i.location,
-                    agent2_loc=agent_j.location,
-                    agent1_action=agent_i.action,
-                    agent2_action=agent_j.action)
+                agent1_loc=agent_i.location,
+                agent2_loc=agent_j.location,
+                agent1_action=agent_i.action,
+                agent2_action=agent_j.action)
 
             # Update exec array and set path to do nothing.
             if not exec_[0]:
@@ -415,9 +446,9 @@ class OvercookedEnvironment(gym.Env):
             # Track collisions.
             if not all(exec_):
                 collision = CollisionRepr(
-                        time=self.t,
-                        agent_names=[agent_i.name, agent_j.name],
-                        agent_locations=[agent_i.location, agent_j.location])
+                    time=self.t,
+                    agent_names=[agent_i.name, agent_j.name],
+                    agent_locations=[agent_i.location, agent_j.location])
                 self.collisions.append(collision)
 
         print('\nexecute array is:', execute)
@@ -426,17 +457,17 @@ class OvercookedEnvironment(gym.Env):
         for i, agent in enumerate(self.sim_agents):
             if not execute[i]:
                 agent.action = (0, 0)
-            print("{} has action {}".format(color(agent.name, agent.color), agent.action))
+            # print("{} has action {}".format(color(agent.name, agent.color), agent.action))
 
     def execute_navigation(self):
         for agent in self.sim_agents:
             interact(agent=agent, world=self.world)
             self.agent_actions[agent.name] = agent.action
 
-
     def cache_distances(self):
         """Saving distances between world objects."""
-        counter_grid_names = [name for name in self.world.objects if "Supply" in name or "Counter" in name or "Delivery" in name or "Cut" in name]
+        counter_grid_names = [name for name in self.world.objects if
+                              "Supply" in name or "Counter" in name or "Delivery" in name or "Cut" in name]
         # Getting all source objects.
         source_objs = copy.copy(self.world.objects["Floor"])
         for name in counter_grid_names:
@@ -458,7 +489,8 @@ class OvercookedEnvironment(gym.Env):
                 shortest_dist = np.inf
                 for source_edge, dest_edge in product(source_edges, destination_edges):
                     try:
-                        dist = nx.shortest_path_length(self.world.reachability_graph, (source.location,source_edge), (destination.location, dest_edge))
+                        dist = nx.shortest_path_length(self.world.reachability_graph, (source.location, source_edge),
+                                                       (destination.location, dest_edge))
                         # Update shortest distance.
                         if dist < shortest_dist:
                             shortest_dist = dist
@@ -469,4 +501,3 @@ class OvercookedEnvironment(gym.Env):
 
         # Save all distances under world as well.
         self.world.distances = self.distances
-

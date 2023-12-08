@@ -24,6 +24,9 @@ class Rep:
     LETTUCE = 'l'
     ONION = 'o'
     PLATE = 'p'
+    DELIVERYBLUE = '£'
+    DELIVERYRED = "$"
+    TRASHCAN = '#'
 
 class GridSquare:
     def __init__(self, name, location):
@@ -62,6 +65,7 @@ class Floor(GridSquare):
         self.color = None
         self.rep = Rep.FLOOR
         self.collidable = False
+        self.occupied = False
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
@@ -71,6 +75,19 @@ class Counter(GridSquare):
     def __init__(self, location):
         GridSquare.__init__(self,"Counter", location)
         self.rep = Rep.COUNTER
+        self.holding = []
+    def __eq__(self, other):
+        return GridSquare.__eq__(self, other)
+    def __hash__(self):
+        return GridSquare.__hash__(self)
+
+# counter which holds food initially - may have infinite or limited supply
+class SpawnCounter(GridSquare):
+    def __init__(self, location):
+        GridSquare.__init__(self,"Counter", location)
+        self.rep = Rep.COUNTER
+        self.holding = []
+
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
@@ -114,6 +131,28 @@ class Delivery(GridSquare):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
         return GridSquare.__hash__(self)
+    def get_repr(self):
+        return GridSquareRepr(name=self.name, location=self.location, holding= None)
+
+# two different types of delivery space for playing with teams
+class DeliveryBlue(Delivery):
+    def __init__(self, location):
+        GridSquare.__init__(self, "DeliveryBlue", location)
+        self.rep = Rep.DELIVERYBLUE
+        self.holding = []
+
+class DeliveryRed(Delivery):
+    def __init__(self, location):
+        GridSquare.__init__(self, "DeliveryRed", location)
+        self.rep = Rep.DELIVERYRED
+        self.holding = []
+
+class Trashcan(GridSquare):
+    def __init__(self, location):
+        GridSquare.__init__(self, "Trashcan", location)
+        self.rep = Rep.TRASHCAN
+    def get_repr(self):
+        return GridSquareRepr(name=self.name, location=self.location, holding= None)
 
 
 # -----------------------------------------------------------
@@ -153,6 +192,9 @@ class Object:
 
     def get_repr(self):
         return ObjectRepr(name=self.full_name, location=self.location, is_held=self.is_held)
+
+    def get_name(self):
+        return self.full_name
 
     def update_names(self):
         # concatenate names of alphabetically sorted items, e.g.
@@ -355,6 +397,9 @@ RepToClass = {
     Rep.LETTUCE: globals()['Lettuce'],
     Rep.ONION: globals()['Onion'],
     Rep.PLATE: globals()['Plate'],
+    Rep.DELIVERYBLUE: globals()['DeliveryBlue'],
+    Rep.DELIVERYRED: globals()['DeliveryRed'],
+    Rep.TRASHCAN: globals()['Trashcan'],
 }
 
 

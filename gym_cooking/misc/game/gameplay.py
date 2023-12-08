@@ -24,12 +24,11 @@ class GamePlay(Game):
 
         # tally up all gridsquare types
         self.gridsquares = []
-        self.gridsquare_types = defaultdict(set) # {type: set of coordinates of that type}
+        self.gridsquare_types = defaultdict(set)  # {type: set of coordinates of that type}
         for name, gridsquares in self.world.objects.items():
             for gridsquare in gridsquares:
                 self.gridsquares.append(gridsquare)
                 self.gridsquare_types[name].add(gridsquare.location)
-
 
     def on_event(self, event):
         if event.type == pygame.QUIT:
@@ -41,11 +40,11 @@ class GamePlay(Game):
                 pygame.image.save(self.screen, '{}/{}'.format(self.save_dir, image_name))
                 print('just saved image {} to {}'.format(image_name, self.save_dir))
                 return
-            
+
             # Switch current agent
-            if pygame.key.name(event.key) in "1234":
+            if pygame.key.name(event.key) in "12345678":
                 try:
-                    self.current_agent = self.sim_agents[int(pygame.key.name(event.key))-1]
+                    self.current_agent = self.sim_agents[int(pygame.key.name(event.key)) - 1]
                 except:
                     pass
                 return
@@ -55,7 +54,11 @@ class GamePlay(Game):
             if event.key in KeyToTuple.keys():
                 action = KeyToTuple[event.key]
                 self.current_agent.action = action
-                interact(self.current_agent, self.world)
+                returnVal = interact(self.current_agent, self.world)
+                if returnVal == "blue":
+                    self.increase_score("blue")
+                elif returnVal == "red":
+                    self.team2_score += 100
 
     def on_execute(self):
         if self.on_init() == False:
@@ -66,5 +69,3 @@ class GamePlay(Game):
                 self.on_event(event)
             self.on_render()
         self.on_cleanup()
-
-

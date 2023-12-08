@@ -16,13 +16,14 @@ from utils.utils import agent_settings
 
 import numpy as np
 import copy
-from termcolor import colored as color
+# from termcolor import colored as color
 from collections import namedtuple
 
 AgentRepr = namedtuple("AgentRepr", "name location holding")
 
 # Colors for agents.
 COLORS = ['blue', 'magenta', 'yellow', 'green']
+TEAM_COLORS = [['blue-team-blue', 'magenta-team-blue', 'yellow-team-blue', 'green-team-blue'], ['cat-blue-team-red', 'cat-grey-team-red', 'cat-orange-team-red', 'cat-yellow-team-red']]
 
 
 class RealAgent:
@@ -59,7 +60,8 @@ class RealAgent:
                 main_cap=arglist.main_cap)
 
     def __str__(self):
-        return color(self.name[-1], self.color)
+        # return color(self.name[-1], self.color)
+        return str(self.color)
 
     def __copy__(self):
         a = Agent(arglist=self.arglist,
@@ -131,11 +133,11 @@ class RealAgent:
         # Check whether subtask is complete.
         self.subtask_complete = False
         if self.subtask is None or len(self.subtask_agent_names) == 0:
-            print("{} has no subtask".format(color(self.name, self.color)))
+            print("{} has no subtask".format(color(self.name, str(self.color))))
             return
         self.subtask_complete = self.is_subtask_complete(world)
         print("{} done with {} according to planner: {}\nplanner has subtask {} with subtask object {}".format(
-            color(self.name, self.color),
+            str(self.color),
             self.subtask, self.is_subtask_complete(world),
             self.planner.subtask, self.planner.goal_obj))
 
@@ -145,8 +147,8 @@ class RealAgent:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
         print('{} incomplete subtasks:'.format(
-            color(self.name, self.color)),
-            ', '.join(str(t) for t in self.incomplete_subtasks))
+            str(self.color),
+            ', '.join(str(t) for t in self.incomplete_subtasks)))
 
     def update_subtasks(self, env):
         """Update incomplete subtasks---relevant for Bayesian Delegation."""
@@ -201,7 +203,7 @@ class RealAgent:
             self.action = actions[np.random.choice(len(actions), p=probs)]
         # Otherwise, plan accordingly.
         else:
-            if self.model_type == 'greedy' or self.model_type == 'random' or initializing_priors:
+            if self.model_type == 'greedy' or initializing_priors:
                 other_agent_planners = {}
             else:
                 # Determine other agent planners for level 1 planning.
@@ -256,6 +258,10 @@ class RealAgent:
             # Goal state is reached when the number of desired objects has increased.
             self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
 
+    # assigns agent to a team
+    def set_team(self, team):
+        self.team = team
+
 
 class SimAgent:
     """Simulation agent used in the environment object."""
@@ -269,7 +275,8 @@ class SimAgent:
         self.has_delivered = False
 
     def __str__(self):
-        return color(self.name[-1], self.color)
+        return self.color
+        # return color(self.name[-1], self.color)
 
     def __copy__(self):
         a = SimAgent(name=self.name, id_color=self.color,
@@ -288,8 +295,13 @@ class SimAgent:
         return self.holding.full_name
 
     def print_status(self):
+        # print("{} currently at {}, action {}, holding {}".format(
+        #         color(self.name, self.color),
+        #         self.location,
+        #         self.action,
+        #         self.get_holding()))
         print("{} currently at {}, action {}, holding {}".format(
-                color(self.name, self.color),
+                str(self.color),
                 self.location,
                 self.action,
                 self.get_holding()))
