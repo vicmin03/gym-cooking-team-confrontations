@@ -100,23 +100,24 @@ class E2E_BRTDP:
 
         # Joint
         else:
-            agent_locs = []
-            for agent in subtask_agents:
-                sim_state = copy.copy(state)
-                sim_agent_i = list(filter(lambda a: a.name == agent.name, sim_state.sim_agents))[0]
-                sim_agent_i.action = action
-                interact(agent=sim_agent_i, world=sim_state.world)
-                agent_locs.append(sim_agent_i.location)
-                assert sim_agent_i.location not in agent_locs, 'action {} led to state {}'.format(action,
-                                                                                                        sim_state.get_repr())
-            # agent_1, agent_2 = subtask_agents
-            # sim_state = copy.copy(state)
-            # sim_agent_1 = list(filter(lambda a: a.name == agent_1.name, sim_state.sim_agents))[0]
-            # sim_agent_2 = list(filter(lambda a: a.name == agent_2.name, sim_state.sim_agents))[0]
-            # sim_agent_1.action, sim_agent_2.action = action
-            # interact(agent=sim_agent_1, world=sim_state.world)
-            # interact(agent=sim_agent_2, world=sim_state.world)
-            # assert sim_agent_1.location != sim_agent_2.location, 'action {} led to state {}'.format(action, sim_state.get_repr())
+            # agent_locs = []
+            # for agent in subtask_agents:
+            #     sim_state = copy.copy(state)
+            #     sim_agent_i = list(filter(lambda a: a.name == agent.name, sim_state.sim_agents))[0]
+            #     sim_agent_i.action = action
+            #     interact(agent=sim_agent_i, world=sim_state.world)
+            #     agent_locs.append(sim_agent_i.location)
+                # assert sim_agent_i.location not in agent_locs, 'action {} led to state {}'.format(action, sim_state.get_repr())
+
+
+            agent_1, agent_2 = subtask_agents
+            sim_state = copy.copy(state)
+            sim_agent_1 = list(filter(lambda a: a.name == agent_1.name, sim_state.sim_agents))[0]
+            sim_agent_2 = list(filter(lambda a: a.name == agent_2.name, sim_state.sim_agents))[0]
+            sim_agent_1.action, sim_agent_2.action = action
+            interact(agent=sim_agent_1, world=sim_state.world)
+            interact(agent=sim_agent_2, world=sim_state.world)
+            assert sim_agent_1.location != sim_agent_2.location, 'action {} led to state {}'.format(action, sim_state.get_repr())
 
         # Track this state in value function and repr dict
         # if it's a new state.
@@ -142,7 +143,6 @@ class E2E_BRTDP:
         else:
             # checks for collisions between actions of all combos of two agents in the same team
             agent_combos = combinations(subtask_agents, 2)
-            print(str(agent_combos))
             for combo in agent_combos:
                 agent_1, agent_2 = combo[0], combo[1]
                 valid_actions = list(product(

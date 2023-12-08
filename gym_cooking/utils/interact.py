@@ -11,12 +11,18 @@ def interact(agent, world):
     if agent.action == (0, 0):
         return
 
+    # print(agent.location[0])
+    # print(agent.action[0])
     action_x, action_y = world.inbounds(tuple(np.asarray(agent.location) + np.asarray(agent.action)))
+    # action_x, action_y = world.inbounds((agent.location[0]+agent.action[0][0], agent.location[1]+agent.action[0][1]))
+
     gs = world.get_gridsquare_at((action_x, action_y))
 
     # if floor in front --> move to that square
     if isinstance(gs, Floor): #and gs.holding is None:
         agent.move_to(gs.location)
+
+    # so agents can't collide with each other in manual play
         # if not gs.occupied:
         #     prev = world.get_gridsquare_at(agent.location).toggleOccupied()
         #     agent.move_to(gs.location)
@@ -24,7 +30,7 @@ def interact(agent, world):
         # else:
         #     print("can't move here")
 
-        
+
 
     # if holding something
     elif agent.holding is not None:

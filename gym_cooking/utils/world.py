@@ -301,4 +301,5 @@ class World:
     def inbounds(self, location):
         """Correct location to be in bounds of world object."""
         x, y = location
-        return min(max(x, 0), self.width-1), min(max(y, 0), self.height-1)
+        new_x, new_y = min(max(x, 0), self.width-1), min(max(y, 0), self.height-1)
+        return (new_x, new_y)

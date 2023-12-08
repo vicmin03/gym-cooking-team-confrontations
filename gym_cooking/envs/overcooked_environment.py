@@ -247,6 +247,30 @@ class OvercookedEnvironment(gym.Env):
                 "done": done, "termination_info": self.termination_info}
         return new_obs, reward, done, info
 
+    # Checks if a recipe is finished + delivered, to increase score of teams
+    def recipe_done(self):
+        assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
+
+        # Done if subtask is completed.
+        for subtask in self.all_subtasks:
+            # Double check all goal_objs are at Delivery.
+            if isinstance(subtask, recipe.Deliver):
+                _, goal_obj = nav_utils.get_subtask_obj(subtask)
+
+                delivery_locs = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list())) 
+                delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
+                goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
+                if not any([gol == delivery_loc for gol in goal_obj_locs]):
+                    self.termination_info = ""
+                    self.successful = False
+                    return False
+                else:
+                    for loc in delivery_locs:
+                        print(loc)
+                        # if loc.location == 'DeliveryBlue':
+                        #     # increase blue team score
+                        # elif loc.location == 'DeliveryRed':
+                        #     # increase red team score
 
     def done(self):
         # Done if the episode maxes out
@@ -258,22 +282,22 @@ class OvercookedEnvironment(gym.Env):
 
         assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
 
-        # Done if subtask is completed.
-        for subtask in self.all_subtasks:
-            # Double check all goal_objs are at Delivery.
-            if isinstance(subtask, recipe.Deliver):
-                _, goal_obj = nav_utils.get_subtask_obj(subtask)
+        # # Done if subtask is completed.
+        # for subtask in self.all_subtasks:
+        #     # Double check all goal_objs are at Delivery.
+        #     if isinstance(subtask, recipe.Deliver):
+        #         _, goal_obj = nav_utils.get_subtask_obj(subtask)
 
-                delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
-                goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
-                if not any([gol == delivery_loc for gol in goal_obj_locs]):
-                    self.termination_info = ""
-                    self.successful = False
-                    return False
+        #         delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
+        #         goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
+        #         if not any([gol == delivery_loc for gol in goal_obj_locs]):
+        #             self.termination_info = ""
+        #             self.successful = False
+        #             return False
 
-        self.termination_info = "Terminating because all deliveries were completed"
-        self.successful = True
-        return True
+        # self.termination_info = "Terminating because all deliveries were completed"
+        # self.successful = True
+        # return True
 
     def reward(self):
         return 1 if self.successful else 0
