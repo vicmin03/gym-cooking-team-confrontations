@@ -238,7 +238,8 @@ class OvercookedEnvironment(gym.Env):
         # Get a plan-representation observation.
         new_obs = copy.copy(self)
         # Get an image observation
-        image_obs = self.game.get_image_obs()
+        if self.game != None:
+            image_obs = self.game.get_image_obs()
 
         done = self.done()
         reward = self.reward()
@@ -481,7 +482,7 @@ class OvercookedEnvironment(gym.Env):
         for i, agent in enumerate(self.sim_agents):
             if not execute[i]:
                 agent.action = (0, 0)
-            print("{} has action {}".format(color(agent.name, agent.color), agent.action))
+            print("{} has action {}".format((agent.name, agent.color), agent.action))
 
     def execute_navigation(self):
         for agent in self.sim_agents:

@@ -60,7 +60,7 @@ class RealAgent:
                 main_cap=arglist.main_cap)
 
     def __str__(self):
-        return color(self.name[-1], self.color)
+        return (self.name[-1], self.color)
 
     def __copy__(self):
         a = Agent(arglist=self.arglist,
@@ -94,7 +94,7 @@ class RealAgent:
         # Select subtask based on Bayesian Delegation.
         self.update_subtasks(env=obs)
         self.new_subtask, self.new_subtask_agent_names = self.delegator.select_subtask(
-                agent_name=self.name)
+            agent_name=self.name)
         self.plan(copy.copy(obs))
         return self.action
 
@@ -132,11 +132,11 @@ class RealAgent:
         # Check whether subtask is complete.
         self.subtask_complete = False
         if self.subtask is None or len(self.subtask_agent_names) == 0:
-            print("{} has no subtask".format(color(self.name, self.color)))
+            print("{} has no subtask".format((self.name, self.color)))
             return
         self.subtask_complete = self.is_subtask_complete(world)
         print("{} done with {} according to planner: {}\nplanner has subtask {} with subtask object {}".format(
-            color(self.name, self.color),
+            (self.name, self.color),
             self.subtask, self.is_subtask_complete(world),
             self.planner.subtask, self.planner.goal_obj))
 
@@ -146,19 +146,19 @@ class RealAgent:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
         print('{} incomplete subtasks:'.format(
-            color(self.name, self.color)),
+            (self.name, self.color)),
             ', '.join(str(t) for t in self.incomplete_subtasks))
 
     def update_subtasks(self, env):
         """Update incomplete subtasks---relevant for Bayesian Delegation."""
         if ((self.subtask is not None and self.subtask not in self.incomplete_subtasks)
                 or (self.delegator.should_reset_priors(obs=copy.copy(env),
-                            incomplete_subtasks=self.incomplete_subtasks))):
+                                                       incomplete_subtasks=self.incomplete_subtasks))):
             self.reset_subtasks()
             self.delegator.set_priors(
-                    obs=copy.copy(env),
-                    incomplete_subtasks=self.incomplete_subtasks,
-                    priors_type=self.priors)
+                obs=copy.copy(env),
+                incomplete_subtasks=self.incomplete_subtasks,
+                priors_type=self.priors)
         else:
             if self.subtask is None:
                 self.delegator.set_priors(
@@ -167,9 +167,9 @@ class RealAgent:
                     priors_type=self.priors)
             else:
                 self.delegator.bayes_update(
-                        obs_tm1=copy.copy(env.obs_tm1),
-                        actions_tm1=env.agent_actions,
-                        beta=self.beta)
+                    obs_tm1=copy.copy(env.obs_tm1),
+                    actions_tm1=env.agent_actions,
+                    beta=self.beta)
 
     def all_done(self):
         """Return whether this agent is all done.
