@@ -13,6 +13,8 @@ StringToGridSquare = {
         "Plate"    : Counter,
         "Cutboard" : Cutboard,
         "Delivery" : Delivery,
+        "Delivery1": Delivery1,
+        "Delivery2": Delivery2,
         "Trashcan" : Trashcan
         }
 
@@ -69,6 +71,10 @@ def get_single_actions(env, agent):
                 actions.append(t)
             # Can interact with deliveries
             elif isinstance(gs, Delivery):
+                actions.append(t)
+            elif isinstance(gs, Delivery1):
+                actions.append(t)
+            elif isinstance(gs, Delivery2):
                 actions.append(t)
             # Can interact with others if at least one of me or gs is holding something, or mergeable
             elif gs.holding is None and agent.holding is not None:
@@ -151,6 +157,10 @@ def get_subtask_action_obj(subtask):
         obj = get_obj(obj_string="Cutboard", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Deliver):
         obj = get_obj(obj_string="Delivery", type_="is_supply", state=None)
+    elif isinstance(subtask, recipe.Deliver):
+        obj = get_obj(obj_string="Delivery1", type_="is_supply", state=None)
+    elif isinstance(subtask, recipe.Deliver):
+        obj = get_obj(obj_string="Delivery2", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Merge):
         obj = None
     elif subtask is None:

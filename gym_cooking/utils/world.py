@@ -180,10 +180,7 @@ class World:
                             bound_1_to_B=bound_1_to_B,
                             bound_2_to_B=bound_2_to_B
                             )
-                    print("Wanna merge")
                     bound = max(min_bound_to_A, min_bound_to_B) + (bound_between_agents - 1)/2
-                else:
-                    print("Well fuck")
 
 
             if bound < lower_bound:

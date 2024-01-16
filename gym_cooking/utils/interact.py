@@ -11,8 +11,6 @@ def interact(agent, world):
     if agent.action == (0, 0):
         return
 
-    # print(agent.location[0])
-    # print(agent.action[0])
     action_x, action_y = world.inbounds(tuple(np.asarray(agent.location) + np.asarray(agent.action)))
     # action_x, action_y = world.inbounds((agent.location[0]+agent.action[0][0], agent.location[1]+agent.action[0][1]))
 
@@ -41,10 +39,10 @@ def interact(agent, world):
                 gs.acquire(obj)
                 agent.release()
                 print('\nDelivered {}!'.format(obj.full_name))
-                if isinstance(gs, DeliveryBlue):
-                    return "blue"
-                elif isinstance(gs, DeliveryRed):
-                     return "red"
+                if isinstance(gs, Delivery1):
+                    return 1
+                elif isinstance(gs, Delivery2):
+                     return 2
         
         # if trashcan in front --> delete object
         elif isinstance(gs, Trashcan):

@@ -24,8 +24,8 @@ class Rep:
     LETTUCE = 'l'
     ONION = 'o'
     PLATE = 'p'
-    DELIVERYBLUE = '£'
-    DELIVERYRED = "$"
+    DELIVERY1 = '£'
+    DELIVERY2 = "$"
     TRASHCAN = '#'
 
 class GridSquare:
@@ -134,17 +134,17 @@ class Delivery(GridSquare):
     def get_repr(self):
         return GridSquareRepr(name=self.name, location=self.location, holding= None)
 
-# two different types of delivery space for playing with teams
-class DeliveryBlue(Delivery):
+# two different types of delivery space for playing with teams (team 1 = Blue, team2 = Red)
+class Delivery1(Delivery):
     def __init__(self, location):
-        GridSquare.__init__(self, "DeliveryBlue", location)
-        self.rep = Rep.DELIVERYBLUE
+        GridSquare.__init__(self, "Delivery1", location)
+        self.rep = Rep.DELIVERY1
         self.holding = []
 
-class DeliveryRed(Delivery):
+class Delivery2(Delivery):
     def __init__(self, location):
-        GridSquare.__init__(self, "DeliveryRed", location)
-        self.rep = Rep.DELIVERYRED
+        GridSquare.__init__(self, "Delivery2", location)
+        self.rep = Rep.DELIVERY2
         self.holding = []
 
 class Trashcan(GridSquare):
@@ -397,8 +397,8 @@ RepToClass = {
     Rep.LETTUCE: globals()['Lettuce'],
     Rep.ONION: globals()['Onion'],
     Rep.PLATE: globals()['Plate'],
-    Rep.DELIVERYBLUE: globals()['DeliveryBlue'],
-    Rep.DELIVERYRED: globals()['DeliveryRed'],
+    Rep.DELIVERY1: globals()['Delivery1'],
+    Rep.DELIVERY2: globals()['Delivery2'],
     Rep.TRASHCAN: globals()['Trashcan'],
 }
 

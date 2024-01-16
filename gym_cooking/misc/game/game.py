@@ -18,17 +18,16 @@ def get_image(path):
 
 
 class Game:
-    def __init__(self, world, sim_agents, play=False):
+    def __init__(self, world, sim_agents, env, play=False):
         self._running = True
         self.world = world
         self.sim_agents = sim_agents
         self.current_agent = self.sim_agents[0]
         self.play = play
+        self.env = env
 
         # scores held by teams (how many?)
         self.font = None
-        self.team1_score = 0
-        self.team2_score = 0
         
         # Visual parameters
         self.scale = 80   # num pixels per tile
@@ -87,17 +86,10 @@ class Game:
 
 
     def show_score(self):
-        score1 = self.font.render(("Score: " + str(self.team1_score)), True, (0, 0, 255))
-        score2 = self.font.render(("Score: " + str(self.team2_score)), True, (255, 0, 0))
+        score1 = self.font.render(("Score: " + str(self.env.get_team1_score())), True, (0, 0, 255))
+        score2 = self.font.render(("Score: " + str(self.env.get_team2_score())), True, (255, 0, 0))
         self.screen.blit(score1, (10, 10))
         self.screen.blit(score2, (10, 50))
-
-    def increase_score(self, team):
-        if team == "blue":
-            self.team1_score += 100
-        else:
-            self.team2_score += 100
-
 
     def draw_gridsquare(self, gs):
         sl = self.scaled_location(gs.location)
@@ -111,11 +103,11 @@ class Game:
             pygame.draw.rect(self.screen, Color.COUNTER, fill)
             pygame.draw.rect(self.screen, Color.COUNTER_BORDER, fill, 1)
 
-        elif isinstance(gs, DeliveryBlue):
+        elif isinstance(gs, Delivery1):
             pygame.draw.rect(self.screen, Color.DELIVERY, fill)
             self.draw('delivery-blue', self.tile_size, sl)
 
-        elif isinstance(gs, DeliveryRed):
+        elif isinstance(gs, Delivery2):
             pygame.draw.rect(self.screen, Color.DELIVERY, fill)
             self.draw('delivery-red', self.tile_size, sl)
 

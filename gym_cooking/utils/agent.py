@@ -34,7 +34,7 @@ class RealAgent:
         self.name = name
         self.color = id_color
         self.recipes = recipes
-        self.team = 1  # what team agent is on - cooperates with same team, opponents with diff. teams
+        self.team = 0  # what team agent is on - cooperates with same team, opponents with diff. teams
 
         # Bayesian Delegation.
         self.reset_subtasks()
@@ -75,6 +75,9 @@ class RealAgent:
         if self.holding is not None:
             a.holding = copy.copy(self.holding)
         return a
+
+    def set_team(self, team):
+        self.team = team
 
     def get_holding(self):
         if self.holding is None:
@@ -271,6 +274,7 @@ class SimAgent:
         self.holding = None
         self.action = (0, 0)
         self.has_delivered = False
+        self.team = 0
 
     def __str__(self):
         return self.color
@@ -284,6 +288,9 @@ class SimAgent:
             a.holding = copy.copy(self.holding)
         return a
 
+    def set_team(self, team):
+        self.team = team
+
     def get_repr(self):
         return AgentRepr(name=self.name, location=self.location, holding=self.get_holding())
 
@@ -293,11 +300,6 @@ class SimAgent:
         return self.holding.full_name
 
     def print_status(self):
-        # print("{} currently at {}, action {}, holding {}".format(
-        #         color(self.name, self.color),
-        #         self.location,
-        #         self.action,
-        #         self.get_holding()))
         print("{} currently at {}, action {}, holding {}".format(
                 self.color,
                 self.location,

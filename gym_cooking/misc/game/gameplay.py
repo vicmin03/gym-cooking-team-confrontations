@@ -15,8 +15,9 @@ from datetime import datetime
 
 
 class GamePlay(Game):
-    def __init__(self, filename, world, sim_agents):
-        Game.__init__(self, world, sim_agents, play=True)
+    def __init__(self, filename, world, sim_agents, env):
+        self.env = env
+        Game.__init__(self, world, sim_agents, env, play=True)
         self.filename = filename
         self.save_dir = 'misc/game/screenshots'
         if not os.path.exists(self.save_dir):
@@ -56,12 +57,10 @@ class GamePlay(Game):
                 action = KeyToTuple[event.key]
                 self.current_agent.action = action
                 returnVal = interact(self.current_agent, self.world)
-                if returnVal =="blue":
-                    print("Blue delivered something!!")
-                    self.increase_score("blue")
-                elif returnVal =="red":
-                    print("Red delivered something!!")
-                    self.team2_score += 100
+                if returnVal == 1:  # team 1 (blue) delivered a dish
+                    self.env.increase_team1_score(100)
+                elif returnVal == 2:
+                    self.env.increase_team2_score(100)
 
 
     def on_execute(self):
