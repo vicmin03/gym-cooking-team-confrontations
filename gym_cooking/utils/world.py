@@ -19,6 +19,7 @@ class World:
         self.rep = [] # [row0, row1, ..., rown]
         self.arglist = arglist
         self.objects = defaultdict(lambda : [])
+        self.stock = 1   # number of ingredients available in each map - same for each ingredient
 
     def get_repr(self):
         return self.get_dynamic_objects()
@@ -303,3 +304,7 @@ class World:
         x, y = location
         new_x, new_y = min(max(x, 0), self.width-1), min(max(y, 0), self.height-1)
         return (new_x, new_y)
+
+    # returns the number of that ingredient available in env
+    def get_stock(self, ingredient):
+        return len(self.objects.get(ingredient))

@@ -135,6 +135,8 @@ def main_loop(arglist):
         for agent in real_agents:
             agent.refresh_subtasks(world=env.world)
 
+        env.world.print_objects()
+
         # Saving info
         bag.add_status(cur_time=info['t'], real_agents=real_agents)
 
