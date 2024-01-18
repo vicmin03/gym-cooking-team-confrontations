@@ -47,6 +47,10 @@ class OvercookedEnvironment(gym.Env):
         self.termination_info = ""
         self.successful = False
 
+        # scores for each team
+        self.team1_score = 0
+        self.team2_score = 0
+
     def get_repr(self):
         return self.world.get_repr() + tuple([agent.get_repr() for agent in self.sim_agents])
 
@@ -153,7 +157,7 @@ class OvercookedEnvironment(gym.Env):
                             name='agent-' + str(len(self.sim_agents) + 1),
                             id_color=TEAM_COLORS[len(self.sim_agents) % 2][int(len(self.sim_agents)/2)],
                             location=(int(loc[0]), int(loc[1])))
-
+                        sim_agent.set_team((len(self.sim_agents) % 2) + 1)
                         self.sim_agents.append(sim_agent)
 
                 elif phase == 5:
@@ -201,7 +205,8 @@ class OvercookedEnvironment(gym.Env):
                     filename=self.filename,
                     world=self.world,
                     sim_agents=self.sim_agents,
-                    record=self.arglist.record)
+                    record=self.arglist.record,
+                    env=self)
             self.game.on_init()
             if self.arglist.record:
                 self.game.save_image_obs(self.t)
@@ -248,29 +253,37 @@ class OvercookedEnvironment(gym.Env):
                 "done": done, "termination_info": self.termination_info}
         return new_obs, reward, done, info
 
+    def get_team1_score(self):
+        return self.team1_score
+
+    def get_team2_score(self):
+        return self.team2_score
+
+
+
     # Checks if a recipe is finished + delivered, to increase score of teams
-    def recipe_done(self):
-        assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
+    # def recipe_done(self):
+    #     assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
 
-        # Done if subtask is completed.
-        for subtask in self.all_subtasks:
-            # Double check all goal_objs are at Delivery.
-            if isinstance(subtask, recipe.Deliver):
-                _, goal_obj = nav_utils.get_subtask_obj(subtask)
+    #     # Done if subtask is completed.
+    #     for subtask in self.all_subtasks:
+    #         # Double check all goal_objs are at Delivery.
+    #         if isinstance(subtask, recipe.Deliver):
+    #             _, goal_obj = nav_utils.get_subtask_obj(subtask)
 
-                delivery_locs = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list())) 
-                delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
-                goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
-                if not any([gol == delivery_loc for gol in goal_obj_locs]):
-                    self.termination_info = ""
-                    self.successful = False
-                    return False
-                else:
-                    for loc in delivery_locs:
-                        print(loc)
-                        # if loc.location == 'DeliveryBlue':
-                        #     # increase blue team score
-                        # elif loc.location == 'DeliveryRed':
+    #             delivery_locs = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list())) 
+    #             delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
+    #             goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
+    #             if not any([gol == delivery_loc for gol in goal_obj_locs]):
+    #                 self.termination_info = ""
+    #                 self.successful = False
+    #                 return False
+    #             else:
+    #                 for loc in delivery_locs:
+    #                     print(loc)
+    #                     # if loc.location == 'DeliveryBlue':
+    #                     #     # increase blue team score
+    #                     # elif loc.location == 'DeliveryRed':
                         #     # increase red team score
 
     def done(self):
@@ -486,7 +499,11 @@ class OvercookedEnvironment(gym.Env):
 
     def execute_navigation(self):
         for agent in self.sim_agents:
-            interact(agent=agent, world=self.world)
+            returnVal = interact(agent=agent, world=self.world)
+            if returnVal == 1:      # an agent on team1 delivered a dish
+                self.team1_score += 100
+            elif returnVal == 2:      # an agent on team2 delivered a dish
+                self.team2_score += 100
             self.agent_actions[agent.name] = agent.action
 
 

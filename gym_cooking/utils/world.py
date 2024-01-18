@@ -289,7 +289,10 @@ class World:
                 all_objs))
 
         # may have multiple objects at a single location, when they are from initial spawn location
-        return objs[0]
+        if len(objs) > 0:
+            return objs[0]
+        else:
+            return None
 
     def get_gridsquare_at(self, location):
         gss = list(filter(lambda o: o.location == location and\

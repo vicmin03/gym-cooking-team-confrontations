@@ -36,15 +36,22 @@ def interact(agent, world):
     elif agent.holding is not None:
         # if delivery in front --> deliver
         if isinstance(gs, Delivery):
+            # removes any dishes already there
             obj = agent.holding
             if obj.is_deliverable():
+                already_del = world.get_object_at(gs.location, None, find_held_objects=False)
+                if already_del is not None:
+                    world.remove(already_del)
                 gs.acquire(obj)
                 agent.release()
-                print('\nDelivered {}!'.format(obj.full_name))
-                if isinstance(gs, DeliveryBlue):
-                    return "blue"
-                elif isinstance(gs, DeliveryRed):
-                     return "red"
+                print('\nDelivered {} for team {}!'.format(obj.full_name, agent.get_team()))
+                # if isinstance(gs, DeliveryBlue):
+                #     return "blue"
+                # elif isinstance(gs, DeliveryRed):
+                #      return "red"
+            # returns the number of team that last held the dish
+            return obj.last_held
+
         
         # if trashcan in front --> delete object
         elif isinstance(gs, Trashcan):
@@ -69,7 +76,6 @@ def interact(agent, world):
                 #     gs.acquire(agent.holding)
                 #     agent.release()
 
-
         # if holding something, empty gridsquare in front --> chop or drop
         elif not world.is_occupied(gs.location):
             obj = agent.holding
@@ -93,6 +99,7 @@ def interact(agent, world):
             else:
                 gs.release()
                 agent.acquire(obj)
+            obj.last_held = agent.get_team()
 
         # if empty in front --> interact
         elif not world.is_occupied(gs.location):

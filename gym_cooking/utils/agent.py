@@ -76,6 +76,12 @@ class RealAgent:
             a.holding = copy.copy(self.holding)
         return a
 
+    def set_team(self, team):
+        self.team = team
+
+    def get_team(self):
+        return self.team
+
     def get_holding(self):
         if self.holding is None:
             return 'None'
@@ -271,6 +277,7 @@ class SimAgent:
         self.holding = None
         self.action = (0, 0)
         self.has_delivered = False
+        self.team = 1
 
     def __str__(self):
         return self.color
@@ -283,6 +290,13 @@ class SimAgent:
         if self.holding is not None:
             a.holding = copy.copy(self.holding)
         return a
+
+    def set_team(self, team):
+        self.team = team
+
+    def get_team(self):
+        return self.team
+
 
     def get_repr(self):
         return AgentRepr(name=self.name, location=self.location, holding=self.get_holding())

@@ -95,6 +95,7 @@ def initialize_agents(arglist):
                             name='agent-'+str(len(real_agents)+1),
                             id_color=TEAM_COLORS[len(real_agents) % 2][int(len(real_agents)/2)],
                             recipes=recipes)
+                    real_agent.set_team((len(real_agents) % 2) + 1)
                     real_agents.append(real_agent)
 
             # phase 5: read in agent locations when not in teams
@@ -149,7 +150,7 @@ if __name__ == '__main__':
     if arglist.play:
         env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
         env.reset()
-        game = GamePlay(env.filename, env.world, env.sim_agents)
+        game = GamePlay(env.filename, env.world, env.sim_agents, env)
         game.on_execute()
     else:
         model_types = [arglist.model1, arglist.model2, arglist.model3, arglist.model4, arglist.model5, arglist.model6, arglist.model7, arglist.model8]
