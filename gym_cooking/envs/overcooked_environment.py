@@ -256,10 +256,14 @@ class OvercookedEnvironment(gym.Env):
     def get_team1_score(self):
         return self.team1_score
 
+    def increase_team1_score(self, score):
+        self.team1_score +=score
+
     def get_team2_score(self):
         return self.team2_score
 
-
+    def increase_team2_score(self, score):
+        self.team2_score += score
 
     # Checks if a recipe is finished + delivered, to increase score of teams
     # def recipe_done(self):
