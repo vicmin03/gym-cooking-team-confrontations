@@ -30,6 +30,11 @@ class Recipe:
         self.full_plate_name = '-'.join(sorted(self.contents_names + ['Plate']))   # string
         self.goal = recipe.Delivered(self.full_plate_name)
         self.actions.add(recipe.Deliver(self.full_plate_name))
+        
+        # self.counter_goal = recipe.Trashed(self.full_plate_name)
+        # self.actions.add(recipe.Trash(self.full_plate_name))
+        # print(self.actions)
+        
 
     def add_merge_actions(self):
         # should be general enough for any kind of salad / raw plated veggies
@@ -64,6 +69,14 @@ class Recipe:
                         self.actions.add(recipe.Merge(plate_str, rem_str,\
                             [recipe.Merged(plate_str), recipe.Merged(rem_str)], None))
                         self.actions.add(recipe.Merge(item, rem_plate_str))
+
+    def get_actions(self):
+        """ Returns all the actions needed to complete recipe """
+        return self.actions
+    
+    def get_full_dish(self):
+        return self.full_plate_name
+
 
 class SimpleTomato(Recipe):
     def __init__(self):

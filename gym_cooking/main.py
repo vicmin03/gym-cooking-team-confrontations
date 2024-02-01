@@ -41,7 +41,7 @@ def parse_arguments():
 
     # Models
     # Valid options: `bd` = Bayes Delegation; `up` = Uniform Priors
-    # `dc` = Divide & Conquer; `fb` = Fixed Beliefs; `greedy` = Greedy
+    # `dc` = Divide & Conquer; `fb` = Fixed Beliefs; `greedy` = Greedy, 'rl' = reinforcement learning
     parser.add_argument("--model1", type=str, default=None, help="Model type for agent 1 (bd, up, dc, fb, or greedy)")
     parser.add_argument("--model2", type=str, default=None, help="Model type for agent 2 (bd, up, dc, fb, or greedy)")
     parser.add_argument("--model3", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, or greedy)")

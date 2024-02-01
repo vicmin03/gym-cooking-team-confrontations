@@ -25,7 +25,7 @@ class BayesianDelegator(Delegator):
             all_agent_names: List of str agent names.
             model_type: Str of model type. Must be either "bd"=Bayesian Delegation,
                 "fb"=Fixed Beliefs, "up"=Uniform Priors, "dc"=Divide & Conquer,
-                "greedy"=Greedy.
+                "greedy"=Greedy, "rl"=Reinforcement Learning.
             planner: Navigation Planner object, belonging to agent.
             none_action_prob: Float of probability for taking (0, 0) in a None subtask.
         """
@@ -68,6 +68,8 @@ class BayesianDelegator(Delegator):
         subtask allocations (combinations of all_agent_names and incomplete_subtasks)."""
         if self.model_type == "greedy":
             probs = self.add_greedy_subtasks()
+        # elif self.model_type == "rl":
+        #     probs = self.add_rl_subtasks()
         elif self.model_type == "dc":
             probs = self.add_dc_subtasks()
         else:

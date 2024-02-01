@@ -109,8 +109,9 @@ class RealAgent:
         self.sw = STRIPSWorld(world, self.recipes)
         # [path for recipe 1, path for recipe 2, ...] where each path is a list of actions.
         subtasks = self.sw.get_subtasks(max_path_length=self.arglist.max_num_subtasks)
+        
         all_subtasks = [subtask for path in subtasks for subtask in path]
-
+        print(all_subtasks)
         # Uncomment below to view graph for recipe path i
         # i = 0
         # pg = recipe_utils.make_predicate_graph(self.sw.initial, recipe_paths[i])

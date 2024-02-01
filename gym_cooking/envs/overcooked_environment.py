@@ -195,6 +195,7 @@ class OvercookedEnvironment(gym.Env):
                 level=self.arglist.level,
                 num_agents=self.arglist.num_agents)
         self.all_subtasks = self.run_recipes()
+        self.confrontation_tasks()
         self.world.make_loc_to_gridsquare()
         self.world.make_reachability_graph()
         self.cache_distances()
@@ -210,6 +211,8 @@ class OvercookedEnvironment(gym.Env):
             self.game.on_init()
             if self.arglist.record:
                 self.game.save_image_obs(self.t)
+        else:
+            self.game = None
 
         return copy.copy(self)
 
@@ -264,31 +267,6 @@ class OvercookedEnvironment(gym.Env):
 
     def increase_team2_score(self, score):
         self.team2_score += score
-
-    # Checks if a recipe is finished + delivered, to increase score of teams
-    # def recipe_done(self):
-    #     assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
-
-    #     # Done if subtask is completed.
-    #     for subtask in self.all_subtasks:
-    #         # Double check all goal_objs are at Delivery.
-    #         if isinstance(subtask, recipe.Deliver):
-    #             _, goal_obj = nav_utils.get_subtask_obj(subtask)
-
-    #             delivery_locs = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list())) 
-    #             delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
-    #             goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
-    #             if not any([gol == delivery_loc for gol in goal_obj_locs]):
-    #                 self.termination_info = ""
-    #                 self.successful = False
-    #                 return False
-    #             else:
-    #                 for loc in delivery_locs:
-    #                     print(loc)
-    #                     # if loc.location == 'DeliveryBlue':
-    #                     #     # increase blue team score
-    #                     # elif loc.location == 'DeliveryRed':
-                        #     # increase red team score
 
     def done(self):
         # Done if the episode maxes out
@@ -346,6 +324,29 @@ class OvercookedEnvironment(gym.Env):
         all_subtasks = [subtask for path in subtasks for subtask in path]
         print('Subtasks:', all_subtasks, '\n')
         return all_subtasks
+
+    def confrontation_tasks(self):
+        """ Returns possible confrontation tasks which hinder the other team"""
+
+        con_actions = {}
+
+        hoard_actions = []
+    # hoard items = get(objects) in self.recipes
+        for action in self.recipes[0].get_actions():
+            if isinstance(action, recipe.Get):
+                hoard_actions.append(action)
+                print("new action: ", action)
+        
+        con_actions['hoard'] = hoard_actions
+
+    # steal items = get(dish) if obj.last_held = other team && closest dish
+        # print(self.recipes[0].get_full_dish())
+        # new_goal = Get(self.recipes[0].get_full_dish())
+        # print(new_goal)
+
+    # trash item = trash(object) if obj.last_held
+        
+
 
     def get_AB_locs_given_objs(self, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
         """Returns list of locations relevant for subtask's Merge operator.
