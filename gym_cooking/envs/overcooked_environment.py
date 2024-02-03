@@ -398,17 +398,22 @@ class OvercookedEnvironment(gym.Env):
                         filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
 
             # Where to put hoarded ingredients (near team agents)
-            # print("I am agent ", agent.name, " on team ", agent.team)
+            
             # finds location of other agents on team
-            agent_locs = list(map(lambda b: b.location, list(filter(lambda b: agent.team == b.team, self.sim_agents))))
-            # print("I am at: ", agent.location, " and Agents are at: ", agent_locs)
-            B_locs = agent_locs
+            agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))
+            
+            print(agent_locs)
+            # find location of counters near team agents
+            counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+            B_locs = []
+            for team_agent in agent_locs:
+                B_locs += (list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs)))
+            print("Counter objects next to agents: ", B_locs)
+            # B_locs = agent_locs
 
 
         else:
             return [], []
-
-        print(subtask, " at: " , B_locs)
         return A_locs, B_locs
 
     def get_lower_bound_for_subtask_given_objs(
