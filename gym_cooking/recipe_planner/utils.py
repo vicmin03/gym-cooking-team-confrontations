@@ -175,6 +175,19 @@ class Trash(Action):
         self.post_add_default = [Trashed(obj)]
         Action.__init__(self, 'Trash', pre, post_add)
 
+'''
+Hoard(X) = put ingredients close to team members
+Pre: Fresh(obj)
+Post: SomeState(X)
+'''
+class Hoard(Action):
+    def __init__(self, obj, pre=None, post_add=None):
+        self.args = (obj,)
+        self.pre_default = [Fresh(obj)]
+        self.post_add_default = [Fresh(obj)]
+        Action.__init__(self, 'Hoard', pre, post_add)
+
+
 
 
 

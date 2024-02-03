@@ -7,7 +7,6 @@ from misc.game.utils import *
 graphics_dir = 'misc/game/graphics'
 _image_library = {}
 
-
 def get_image(path):
     global _image_library
     image = _image_library.get(path)
@@ -31,7 +30,7 @@ class Game:
         self.font = None
 
         # Visual parameters
-        self.scale = 80  # num pixels per tile
+        self.scale = 80   # num pixels per tile
         self.holding_scale = 0.5
         self.container_scale = 0.7
         self.width = self.scale * self.world.width
@@ -40,7 +39,8 @@ class Game:
         self.holding_size = tuple((self.holding_scale * np.asarray(self.tile_size)).astype(int))
         self.container_size = tuple((self.container_scale * np.asarray(self.tile_size)).astype(int))
         self.holding_container_size = tuple((self.container_scale * np.asarray(self.holding_size)).astype(int))
-        # self.font = pygame.font.SysFont('arialttf', 10)
+        #self.font = pygame.font.SysFont('arialttf', 10)
+
 
     def on_init(self):
         pygame.init()
@@ -52,14 +52,16 @@ class Game:
         self.font = pygame.font.SysFont(pygame.font.get_default_font(), 36)
         self._running = True
 
+
     def on_event(self, event):
         if event.type == pygame.QUIT:
             self._running = False
 
+
     def on_render(self):
         self.screen.fill(Color.FLOOR)
         objs = []
-
+        
         # Draw gridsquares
         for o_list in self.world.objects.values():
             for o in o_list:
@@ -67,7 +69,7 @@ class Game:
                     self.draw_gridsquare(o)
                 elif o.is_held == False:
                     objs.append(o)
-
+        
         # Draw objects not held by agents
         for o in objs:
             self.draw_object(o)
@@ -100,14 +102,6 @@ class Game:
             pygame.draw.rect(self.screen, Color.COUNTER, fill)
             pygame.draw.rect(self.screen, Color.COUNTER_BORDER, fill, 1)
 
-        # elif isinstance(gs, Delivery1):
-        #     pygame.draw.rect(self.screen, Color.DELIVERY, fill)
-        #     self.draw('delivery-blue', self.tile_size, sl)
-        #
-        # elif isinstance(gs, Delivery2):
-        #     pygame.draw.rect(self.screen, Color.DELIVERY, fill)
-        #     self.draw('delivery-red', self.tile_size, sl)
-
         elif isinstance(gs, Delivery):
             pygame.draw.rect(self.screen, Color.DELIVERY, fill)
             self.draw('delivery', self.tile_size, sl)
@@ -129,15 +123,16 @@ class Game:
         image = pygame.transform.scale(get_image(image_path), size)
         self.screen.blit(image, location)
 
+
     def draw_agent(self, agent):
         self.draw('agent-{}'.format(agent.color),
-                  self.tile_size, self.scaled_location(agent.location))
+            self.tile_size, self.scaled_location(agent.location))
         self.draw_agent_object(agent.holding)
 
     def draw_agent_object(self, obj):
         # Holding shows up in bottom right corner.
         if obj is None: return
-        if any([isinstance(c, Plate) for c in obj.contents]):
+        if any([isinstance(c, Plate) for c in obj.contents]): 
             self.draw('Plate', self.holding_size, self.holding_location(obj.location))
             if len(obj.contents) > 1:
                 plate = obj.unmerge('Plate')
@@ -148,7 +143,7 @@ class Game:
 
     def draw_object(self, obj):
         if obj is None: return
-        if any([isinstance(c, Plate) for c in obj.contents]):
+        if any([isinstance(c, Plate) for c in obj.contents]): 
             self.draw('Plate', self.tile_size, self.scaled_location(obj.location))
             if len(obj.contents) > 1:
                 plate = obj.unmerge('Plate')

@@ -322,6 +322,7 @@ class OvercookedEnvironment(gym.Env):
         # [path for recipe 1, path for recipe 2, ...] where each path is a list of actions
         subtasks = self.sw.get_subtasks(max_path_length=self.arglist.max_num_subtasks)
         all_subtasks = [subtask for path in subtasks for subtask in path]
+        all_subtasks += self.recipes[0].get_con_actions()
         print('Subtasks:', all_subtasks, '\n')
         return all_subtasks
 
@@ -333,11 +334,12 @@ class OvercookedEnvironment(gym.Env):
         hoard_actions = []
     # hoard items = get(objects) in self.recipes
         for action in self.recipes[0].get_actions():
-            if isinstance(action, recipe.Get):
+            if isinstance(action, recipe.Hoard):
                 hoard_actions.append(action)
                 print("new action: ", action)
         
         con_actions['hoard'] = hoard_actions
+        return hoard_actions
 
     # steal items = get(dish) if obj.last_held = other team && closest dish
         # print(self.recipes[0].get_full_dish())
@@ -346,9 +348,8 @@ class OvercookedEnvironment(gym.Env):
 
     # trash item = trash(object) if obj.last_held
         
-
-
-    def get_AB_locs_given_objs(self, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
+        
+    def get_AB_locs_given_objs(self, agent, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
         """Returns list of locations relevant for subtask's Merge operator.
 
         See Merge operator formalism in our paper, under Fig. 11:
@@ -389,9 +390,25 @@ class OvercookedEnvironment(gym.Env):
                             map(lambda a: a.location, list(
                                 filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj[1], self.sim_agents))))
 
+        # for Merge operator on Hoard subtasks, we look at empty counters that are near to agents on team
+        elif isinstance(subtask, recipe.Hoard):
+            # Ingredients to hoard
+            A_locs = self.world.get_object_locs(
+                    obj=start_obj, is_held=False) + list(map(lambda a: a.location, list(
+                        filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+
+            # Where to put hoarded ingredients (near team agents)
+            # print("I am agent ", agent.name, " on team ", agent.team)
+            # finds location of other agents on team
+            agent_locs = list(map(lambda b: b.location, list(filter(lambda b: agent.team == b.team, self.sim_agents))))
+            # print("I am at: ", agent.location, " and Agents are at: ", agent_locs)
+            B_locs = agent_locs
+
+
         else:
             return [], []
 
+        print(subtask, " at: " , B_locs)
         return A_locs, B_locs
 
     def get_lower_bound_for_subtask_given_objs(
@@ -418,6 +435,7 @@ class OvercookedEnvironment(gym.Env):
         agent_locs = [agent.location for agent in list(filter(lambda a: a.name in subtask_agent_names, self.sim_agents))]
         A_locs, B_locs = self.get_AB_locs_given_objs(
                 subtask=subtask,
+                agent=self.sim_agents[0],
                 subtask_agent_names=subtask_agent_names,
                 start_obj=start_obj,
                 goal_obj=goal_obj,

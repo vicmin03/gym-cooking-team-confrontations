@@ -144,10 +144,13 @@ def get_obj(obj_string, type_, state, location=(None, None)):
         else:
             raise NotImplementedError("Type {} is not recognized".format(type_))
 
+# get the counter location needed to complete subtask
 def get_subtask_action_obj(subtask):
     if isinstance(subtask, recipe.Get):
         obj = get_obj(obj_string=subtask.args[0], type_="is_supply", state=None)
-    elif isinstance(subtask, recipe.Chop):
+    elif isinstance(subtask, recipe.Hoard):
+        obj = get_obj(obj_string=subtask.args[0], type_="is_supply", state=None)
+    elif isinstance(subtask, recipe.Chop): 
         obj = get_obj(obj_string="Cutboard", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Deliver):
         obj = get_obj(obj_string="Delivery", type_="is_supply", state=None)
@@ -159,6 +162,7 @@ def get_subtask_action_obj(subtask):
         raise ValueError("Did not recognize subtask {} so could not find the appropriate subtask location".format(subtask))
     return obj
 
+# get food object involved in subtask
 def get_subtask_obj(subtask):
     if isinstance(subtask, recipe.Chop):
         # start off raw, get chopped
@@ -166,6 +170,13 @@ def get_subtask_obj(subtask):
                 type_="is_object", state=FoodState.FRESH)
         goal_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=FoodState.CHOPPED)
+        
+    elif isinstance(subtask, recipe.Hoard):
+        # hoard raw ingredients
+        start_obj = get_obj(obj_string=subtask.args[0],
+                type_="is_object", state=FoodState.FRESH)
+        goal_obj = get_obj(obj_string=subtask.args[0],
+                type_="is_object", state=FoodState.FRESH)
 
     elif isinstance(subtask, recipe.Merge):
         # only need in last state

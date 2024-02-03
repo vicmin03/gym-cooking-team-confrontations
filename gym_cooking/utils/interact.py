@@ -22,13 +22,6 @@ def interact(agent, world):
     if isinstance(gs, Floor): #and gs.holding is None:
         agent.move_to(gs.location)
 
-    # so agents can't collide with each other in manual play
-        # if not gs.occupied:
-        #     prev = world.get_gridsquare_at(agent.location).toggleOccupied()
-        #     agent.move_to(gs.location)
-        #     gs.toggleOccupied()
-        # else:
-        #     print("can't move here")
 
 
 

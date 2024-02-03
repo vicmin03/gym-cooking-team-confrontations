@@ -5,6 +5,7 @@ from recipe_planner.utils import *
 
 # Delegation planning
 from delegation_planner.bayesian_delegator import BayesianDelegator
+from delegation_planner.marl_delegator import MARLDelegator
 
 # Navigation planner
 from navigation_planner.planners.e2e_brtdp import E2E_BRTDP
@@ -111,7 +112,9 @@ class RealAgent:
         subtasks = self.sw.get_subtasks(max_path_length=self.arglist.max_num_subtasks)
         
         all_subtasks = [subtask for path in subtasks for subtask in path]
-        print(all_subtasks)
+        all_subtasks += self.recipes[0].get_con_actions()
+
+        print("Getting subtasks agent can perform: ", all_subtasks)
         # Uncomment below to view graph for recipe path i
         # i = 0
         # pg = recipe_utils.make_predicate_graph(self.sw.initial, recipe_paths[i])
@@ -121,12 +124,20 @@ class RealAgent:
     def setup_subtasks(self, env):
         """Initializing subtasks and subtask allocator, Bayesian Delegation."""
         self.incomplete_subtasks = self.get_subtasks(world=env.world)
-        self.delegator = BayesianDelegator(
-                agent_name=self.name,
-                all_agent_names=env.get_agent_names(),
-                model_type=self.model_type,
-                planner=self.planner,
-                none_action_prob=self.none_action_prob)
+        if self.model_type == "rl":
+            self.delegator = MARLDelegator(agent_name=self.name,
+                    team = self.team,
+                    all_agent_names=env.get_agent_names(),
+                    model_type=self.model_type,
+                    planner=self.planner,
+                    none_action_prob=self.none_action_prob)
+        else:
+            self.delegator = BayesianDelegator(
+                    agent_name=self.name,
+                    all_agent_names=env.get_agent_names(),
+                    model_type=self.model_type,
+                    planner=self.planner,
+                    none_action_prob=self.none_action_prob)
 
     def reset_subtasks(self):
         """Reset subtasks---relevant for Bayesian Delegation."""
@@ -264,9 +275,6 @@ class RealAgent:
             # Goal state is reached when the number of desired objects has increased.
             self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
 
-    def increaseScore(self):
-        # called to increase team score when delivery is successful to their team
-        sel
 
 class SimAgent:
     """Simulation agent used in the environment object."""
@@ -297,7 +305,6 @@ class SimAgent:
 
     def get_team(self):
         return self.team
-
 
     def get_repr(self):
         return AgentRepr(name=self.name, location=self.location, holding=self.get_holding())
@@ -335,3 +342,6 @@ class SimAgent:
         self.location = new_location
         if self.holding is not None:
             self.holding.location = new_location
+        
+    def get_location(self):
+        return self.location

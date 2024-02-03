@@ -9,6 +9,9 @@ class Recipe:
         self.actions = set()
         self.actions.add(recipe.Get('Plate'))
 
+        # actions that can be done to hinder the other team
+        self.con_actions = set()
+
     def __str__(self):
         return self.name
 
@@ -70,6 +73,16 @@ class Recipe:
                             [recipe.Merged(plate_str), recipe.Merged(rem_str)], None))
                         self.actions.add(recipe.Merge(item, rem_plate_str))
 
+    def add_hoard_actions(self):
+        print("Adding hoard actions")
+        for item in self.contents_names:
+            self.con_actions.add(recipe.Hoard(item))
+
+    def get_con_actions(self):
+        return self.con_actions
+    
+                
+
     def get_actions(self):
         """ Returns all the actions needed to complete recipe """
         return self.actions
@@ -84,6 +97,7 @@ class SimpleTomato(Recipe):
         self.add_ingredient(Tomato(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
+        self.add_hoard_actions()
 
 class SimpleLettuce(Recipe):
     def __init__(self):
@@ -99,6 +113,7 @@ class Salad(Recipe):
         self.add_ingredient(Lettuce(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
+        self.add_hoard_actions()
 
 class OnionSalad(Recipe):
     def __init__(self):

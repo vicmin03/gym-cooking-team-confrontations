@@ -14,9 +14,9 @@ import copy
 SubtaskAllocation = namedtuple("SubtaskAllocation", "subtask subtask_agent_names")
 
 
-class BayesianDelegator(Delegator):
+class MARLDelegator(Delegator):
 
-    def __init__(self, agent_name, all_agent_names,
+    def __init__(self, agent_name, team, all_agent_names,
             model_type, planner, none_action_prob):
         """Initializing Bayesian Delegator for agent_name.
 
@@ -29,8 +29,9 @@ class BayesianDelegator(Delegator):
             planner: Navigation Planner object, belonging to agent.
             none_action_prob: Float of probability for taking (0, 0) in a None subtask.
         """
-        self.name = 'Bayesian Delegator'
+        self.name = 'Delegator'
         self.agent_name = agent_name
+        self.team = team
         self.all_agent_names = all_agent_names
         self.probs = None
         self.model_type = model_type
@@ -82,13 +83,11 @@ class BayesianDelegator(Delegator):
         # Doing nothing is always possible.
         if subtask is None:
             return True
-        this_agent = next(a for a in env.sim_agents if a.name == self.agent_name)
         agent_locs = [agent.location for agent in list(filter(lambda a: a.name in subtask_agent_names, env.sim_agents))]
         start_obj, goal_obj = get_subtask_obj(subtask=subtask)
         subtask_action_obj = get_subtask_action_obj(subtask=subtask)
         A_locs, B_locs = env.get_AB_locs_given_objs(
                 subtask=subtask,
-                agent = this_agent,
                 subtask_agent_names=subtask_agent_names,
                 start_obj=start_obj,
                 goal_obj=goal_obj,
@@ -392,6 +391,23 @@ class BayesianDelegator(Delegator):
             subtask_alloc = [SubtaskAllocation(subtask=subtask, subtask_agent_names=(self.agent_name,))]
             subtask_allocs.append(subtask_alloc)
         return SubtaskAllocDistribution(subtask_allocs)
+    
+    # def add_rl_subtasks(self):
+    #     """Return the entire distribution of greedy subtask allocations.
+    #     i.e. subtasks performed only by agent with self.agent_name."""
+    #     subtask_allocs = []
+
+    #     subtasks = self.incomplete_subtasks
+    #     # At least 1 agent must be doing something.
+    #     if None not in subtasks:
+    #         subtasks += [None]
+
+    #     # Assign this agent to all subtasks. No joint subtasks because this function
+    #     # only considers greedy subtask allocations.
+    #     for subtask in subtasks:
+    #         subtask_alloc = [SubtaskAllocation(subtask=subtask, subtask_agent_names=(self.agent_name,))]
+    #         subtask_allocs.append(subtask_alloc)
+    #     return SubtaskAllocDistribution(subtask_allocs)
 
     def add_dc_subtasks(self):
         """Return the entire distribution of divide & conquer subtask allocations.
