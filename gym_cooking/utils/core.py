@@ -80,9 +80,13 @@ class Counter(GridSquare):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
         return GridSquare.__hash__(self)
+    
+    # whether counter is free to put objects on
+    def free(self):
+        return (self.holding is None or self.holding == [])
 
 # counter which holds food initially - may have infinite or limited supply
-class SpawnCounter(GridSquare):
+class SpawnCounter(Counter):
     def __init__(self, location):
         GridSquare.__init__(self,"Counter", location)
         self.rep = Rep.COUNTER

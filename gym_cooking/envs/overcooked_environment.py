@@ -128,6 +128,7 @@ class OvercookedEnvironment(gym.Env):
                                 counter.acquire(obj=obj)
                                 self.world.insert(obj)
                             self.world.insert(obj=counter)
+                            print(counter.holding)
                         # GridSquare, i.e. Floor, Counter, Cutboard, Delivery.
                         elif rep in RepToClass:
                             newobj = RepToClass[rep]((x, y))
@@ -400,18 +401,18 @@ class OvercookedEnvironment(gym.Env):
             # Where to put hoarded ingredients (near team agents)
             
             # finds location of other agents on team
-            agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))
-            
-            print(agent_locs)
-            # find location of counters near team agents
+            agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
+
+            # find location of empty counters near team agents
             counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
-            B_locs = []
             for team_agent in agent_locs:
-                B_locs += (list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs)))
-            print("Counter objects next to agents: ", B_locs)
-            # B_locs = agent_locs
+                nearby_locs = (list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs)))
+            
+            B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
 
-
+            if len(B_locs) == 0:
+                B_locs = agent_locs   
+            
         else:
             return [], []
         return A_locs, B_locs
