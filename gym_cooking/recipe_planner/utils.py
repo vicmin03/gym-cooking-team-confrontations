@@ -177,8 +177,8 @@ class Trash(Action):
 
 '''
 Hoard(X) = put ingredients close to team members
-Pre: Fresh(obj)
-Post: SomeState(X)
+Pre: Fresh(X)
+Post: Fresh(X)
 '''
 class Hoard(Action):
     def __init__(self, obj, pre=None, post_add=None):
@@ -186,6 +186,18 @@ class Hoard(Action):
         self.pre_default = [Fresh(obj)]
         self.post_add_default = [Fresh(obj)]
         Action.__init__(self, 'Hoard', pre, post_add)
+
+'''
+Steal(X) = Take a fully/partially merged dish from the other team
+Pre: SomeState(obj)
+Post: SomeState(X)
+'''
+class Steal(Action):
+    def __init__(self, obj, pre=None, post_add=None):
+        self.args = (obj,)
+        self.pre_default = [Merged(obj)]
+        self.post_add_default = [Merged(obj)]
+        Action.__init__(self, 'Steal', pre, post_add)
 
 
 

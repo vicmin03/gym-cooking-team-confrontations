@@ -70,13 +70,17 @@ class Recipe:
                         self.actions.add(recipe.Merge(item, rem_plate_str))
 
     def add_hoard_actions(self):
-        print("Adding hoard actions")
         for item in self.contents_names:
             self.con_actions.add(recipe.Hoard(item))
 
     def add_trash_actions(self):
-        print("Adding trash actions")
         self.con_actions.add(recipe.Trash(self.full_plate_name))
+
+    def add_steal_actions(self):
+        print("Adding steal actions")
+        print(self.contents)
+        print(self.contents_names)
+        self.con_actions.add(recipe.Steal(self.full_plate_name))
 
     def get_con_actions(self):
         return self.con_actions
@@ -98,6 +102,7 @@ class SimpleTomato(Recipe):
         self.add_merge_actions()
         self.add_hoard_actions()
         self.add_trash_actions()
+        self.add_steal_actions()
 
 class SimpleLettuce(Recipe):
     def __init__(self):
@@ -107,6 +112,7 @@ class SimpleLettuce(Recipe):
         self.add_merge_actions()
         self.add_hoard_actions()
         self.add_trash_actions()
+        self.add_steal_actions()
 
 class Salad(Recipe):
     def __init__(self):
@@ -117,6 +123,7 @@ class Salad(Recipe):
         self.add_merge_actions()
         self.add_hoard_actions()
         self.add_trash_actions()
+        self.add_steal_actions()
 
 class OnionSalad(Recipe):
     def __init__(self):
@@ -128,5 +135,6 @@ class OnionSalad(Recipe):
         self.add_merge_actions()
         self.add_hoard_actions()
         self.add_trash_actions()
+        self.add_steal_actions()
 
 

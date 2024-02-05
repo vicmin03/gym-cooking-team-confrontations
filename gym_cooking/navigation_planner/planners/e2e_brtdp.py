@@ -602,6 +602,7 @@ class E2E_BRTDP:
             action_index = argmin(np.array(qvals))
             a = actions[action_index]
 
+            print("HEYYYYYYYYY")
             print('chose action:', a)
             print('cost:', self.cost(cur_state, a))
             return a

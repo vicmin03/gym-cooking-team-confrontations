@@ -328,29 +328,6 @@ class OvercookedEnvironment(gym.Env):
         all_subtasks += self.recipes[0].get_con_actions()
         print('Subtasks:', all_subtasks, '\n')
         return all_subtasks
-
-    def confrontation_tasks(self):
-        """ Returns possible confrontation tasks which hinder the other team"""
-
-        con_actions = {}
-
-        hoard_actions = []
-    # hoard items = get(objects) in self.recipes
-        for action in self.recipes[0].get_actions():
-            if isinstance(action, recipe.Hoard):
-                hoard_actions.append(action)
-                print("new action: ", action)
-        
-        con_actions['hoard'] = hoard_actions
-        return hoard_actions
-
-    # steal items = get(dish) if obj.last_held = other team && closest dish
-        # print(self.recipes[0].get_full_dish())
-        # new_goal = Get(self.recipes[0].get_full_dish())
-        # print(new_goal)
-
-    # trash item = trash(object) if obj.last_held
-        
         
     def get_AB_locs_given_objs(self, agent, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
         """Returns list of locations relevant for subtask's Merge operator.
@@ -424,7 +401,21 @@ class OvercookedEnvironment(gym.Env):
              
             # locations of trashcans
             B_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
-            print("Trashcans at spaces: ", B_locs)
+
+        # for Merge operator on Steal subtasks, we look for dishes last held by the other team and put them closer to our team's agents
+        elif isinstance(subtask, recipe.Trash):
+            # locations of dishes that can be stolen
+            A_locs = list(filter(lambda a: a.last_held != agent.team, self.world.get_all_object_locs(obj=start_obj)))
+             
+            # locations near this team's agents
+            agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
+
+            # find location of empty counters near team agents
+            counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+            for team_agent in agent_locs:
+                nearby_locs = (list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs)))
+            
+            B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
         
         else:
             return [], []

@@ -315,11 +315,6 @@ class SimAgent:
         return self.holding.full_name
 
     def print_status(self):
-        # print("{} currently at {}, action {}, holding {}".format(
-        #         color(self.name, self.color),
-        #         self.location,
-        #         self.action,
-        #         self.get_holding()))
         print("{} currently at {}, action {}, holding {}".format(
                 self.color,
                 self.location,

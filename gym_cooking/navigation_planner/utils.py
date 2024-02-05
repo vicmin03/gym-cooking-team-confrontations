@@ -156,6 +156,8 @@ def get_subtask_action_obj(subtask):
         obj = get_obj(obj_string="Delivery", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Trash):
         obj = get_obj(obj_string="Trashcan", type_="is_supply", state=None)
+    elif isinstance(subtask, recipe.Steal):
+        obj = None
     elif isinstance(subtask, recipe.Merge):
         obj = None
     elif subtask is None:
@@ -214,13 +216,20 @@ def get_subtask_obj(subtask):
                 type_="is_object", state=state)
         goal_obj = copy.copy(start_obj)
 
-
     elif isinstance(subtask, recipe.Trash):
         # throw away merged objects
         start_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=FoodState.FRESH)
         goal_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=FoodState.FRESH)
+        
+    elif isinstance(subtask, recipe.Steal):
+        # steal dishes from other team
+        start_obj = get_obj(obj_string=subtask.args[0],
+                type_="is_object", state=FoodState.CHOPPED)
+        goal_obj = get_obj(obj_string=subtask.args[0],
+                type_="is_object", state=FoodState.CHOPPED)
+
 
     elif subtask is None:
         return None, None
