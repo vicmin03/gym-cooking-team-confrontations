@@ -196,7 +196,7 @@ class OvercookedEnvironment(gym.Env):
                 level=self.arglist.level,
                 num_agents=self.arglist.num_agents)
         self.all_subtasks = self.run_recipes()
-        self.confrontation_tasks()
+        # self.confrontation_tasks()
         self.world.make_loc_to_gridsquare()
         self.world.make_reachability_graph()
         self.cache_distances()
@@ -323,6 +323,8 @@ class OvercookedEnvironment(gym.Env):
         # [path for recipe 1, path for recipe 2, ...] where each path is a list of actions
         subtasks = self.sw.get_subtasks(max_path_length=self.arglist.max_num_subtasks)
         all_subtasks = [subtask for path in subtasks for subtask in path]
+
+        # adding confrontation tasks to possible subtasks
         all_subtasks += self.recipes[0].get_con_actions()
         print('Subtasks:', all_subtasks, '\n')
         return all_subtasks
@@ -412,7 +414,18 @@ class OvercookedEnvironment(gym.Env):
 
             if len(B_locs) == 0:
                 B_locs = agent_locs   
-            
+        
+        # for Merge operator on Trash subtasks, we look at trashcan spaces and put whatever the agent is holding there
+        elif isinstance(subtask, recipe.Trash):
+            A_locs = self.world.get_object_locs(
+                    obj=start_obj, is_held=False) + list(
+                            map(lambda a: a.location, list(
+                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+             
+            # locations of trashcans
+            B_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+            print("Trashcans at spaces: ", B_locs)
+        
         else:
             return [], []
         return A_locs, B_locs

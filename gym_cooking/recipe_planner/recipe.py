@@ -34,10 +34,6 @@ class Recipe:
         self.goal = recipe.Delivered(self.full_plate_name)
         self.actions.add(recipe.Deliver(self.full_plate_name))
         
-        # self.counter_goal = recipe.Trashed(self.full_plate_name)
-        # self.actions.add(recipe.Trash(self.full_plate_name))
-        # print(self.actions)
-        
 
     def add_merge_actions(self):
         # should be general enough for any kind of salad / raw plated veggies
@@ -78,10 +74,13 @@ class Recipe:
         for item in self.contents_names:
             self.con_actions.add(recipe.Hoard(item))
 
+    def add_trash_actions(self):
+        print("Adding trash actions")
+        self.con_actions.add(recipe.Trash(self.full_plate_name))
+
     def get_con_actions(self):
         return self.con_actions
     
-                
 
     def get_actions(self):
         """ Returns all the actions needed to complete recipe """
@@ -98,6 +97,7 @@ class SimpleTomato(Recipe):
         self.add_goal()
         self.add_merge_actions()
         self.add_hoard_actions()
+        self.add_trash_actions()
 
 class SimpleLettuce(Recipe):
     def __init__(self):
@@ -105,6 +105,8 @@ class SimpleLettuce(Recipe):
         self.add_ingredient(Lettuce(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
+        self.add_hoard_actions()
+        self.add_trash_actions()
 
 class Salad(Recipe):
     def __init__(self):
@@ -114,6 +116,7 @@ class Salad(Recipe):
         self.add_goal()
         self.add_merge_actions()
         self.add_hoard_actions()
+        self.add_trash_actions()
 
 class OnionSalad(Recipe):
     def __init__(self):
@@ -123,5 +126,7 @@ class OnionSalad(Recipe):
         self.add_ingredient(Onion(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
+        self.add_hoard_actions()
+        self.add_trash_actions()
 
 
