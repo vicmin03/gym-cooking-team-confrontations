@@ -5,7 +5,6 @@ from recipe_planner.utils import *
 
 # Delegation planning
 from delegation_planner.bayesian_delegator import BayesianDelegator
-from delegation_planner.marl_delegator import MARLDelegator
 
 # Navigation planner
 from navigation_planner.planners.e2e_brtdp import E2E_BRTDP
@@ -124,20 +123,12 @@ class RealAgent:
     def setup_subtasks(self, env):
         """Initializing subtasks and subtask allocator, Bayesian Delegation."""
         self.incomplete_subtasks = self.get_subtasks(world=env.world)
-        if self.model_type == "rl":
-            self.delegator = MARLDelegator(agent_name=self.name,
-                    team = self.team,
-                    all_agent_names=env.get_agent_names(),
-                    model_type=self.model_type,
-                    planner=self.planner,
-                    none_action_prob=self.none_action_prob)
-        else:
-            self.delegator = BayesianDelegator(
-                    agent_name=self.name,
-                    all_agent_names=env.get_agent_names(),
-                    model_type=self.model_type,
-                    planner=self.planner,
-                    none_action_prob=self.none_action_prob)
+        self.delegator = BayesianDelegator(
+                agent_name=self.name,
+                all_agent_names=env.get_agent_names(),
+                model_type=self.model_type,
+                planner=self.planner,
+                none_action_prob=self.none_action_prob)
 
     def reset_subtasks(self):
         """Reset subtasks---relevant for Bayesian Delegation."""
@@ -205,6 +196,7 @@ class RealAgent:
         print('right before planning, {} had old subtask {}, new subtask {}, subtask complete {}'.format(self.name, self.subtask, self.new_subtask, self.subtask_complete))
 
         # Check whether this subtask is done.
+            # if subtask is done, update to next one
         if self.new_subtask is not None:
             self.def_subtask_completion(env=env)
 

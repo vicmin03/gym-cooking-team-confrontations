@@ -128,7 +128,6 @@ class OvercookedEnvironment(gym.Env):
                                 counter.acquire(obj=obj)
                                 self.world.insert(obj)
                             self.world.insert(obj=counter)
-                            print(counter.holding)
                         # GridSquare, i.e. Floor, Counter, Cutboard, Delivery.
                         elif rep in RepToClass:
                             newobj = RepToClass[rep]((x, y))
@@ -403,7 +402,7 @@ class OvercookedEnvironment(gym.Env):
             B_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
 
         # for Merge operator on Steal subtasks, we look for dishes last held by the other team and put them closer to our team's agents
-        elif isinstance(subtask, recipe.Trash):
+        elif isinstance(subtask, recipe.Steal):
             # locations of dishes that can be stolen
             A_locs = list(filter(lambda a: a.last_held != agent.team, self.world.get_all_object_locs(obj=start_obj)))
              

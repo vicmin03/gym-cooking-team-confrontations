@@ -157,7 +157,7 @@ def get_subtask_action_obj(subtask):
     elif isinstance(subtask, recipe.Trash):
         obj = get_obj(obj_string="Trashcan", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Steal):
-        obj = None
+        obj = get_obj(obj_string="Plate", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Merge):
         obj = None
     elif subtask is None:

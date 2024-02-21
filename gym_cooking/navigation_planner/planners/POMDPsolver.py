@@ -574,18 +574,20 @@ class E2E_BRTDP:
         # Modify the state with other_agent_planners (Level 1 Planning).
         cur_state, other_agent_actions = self._get_modified_state_with_other_agent_actions(state=self.start)
 
-        # BRTDP main loop.
-        actions = self.get_actions(state_repr=cur_state.get_repr())
-        action_index = argmin([
-            self.Q(state=cur_state, action=a, value_f=self.v_l)
-            for a in actions])
-        a = actions[action_index]
-        B = sum(self.get_expected_diff(cur_state, a).values())
-        diff = (self.v_u[(cur_state.get_repr(), self.subtask)] - self.v_l[(cur_state.get_repr(), self.subtask)])/self.tau
-        self.cur_state = cur_state
-        if (B > diff):
-            print('exploring, B: {}, diff: {}'.format(B, diff))
-            self.main()
+        # # BRTDP main loop.
+        # actions = self.get_actions(state_repr=cur_state.get_repr())
+        # action_index = argmin([
+        #     self.Q(state=cur_state, action=a, value_f=self.v_l)
+        #     for a in actions])
+        # a = actions[action_index]
+        # B = sum(self.get_expected_diff(cur_state, a).values())
+        # diff = (self.v_u[(cur_state.get_repr(), self.subtask)] - self.v_l[(cur_state.get_repr(), self.subtask)])/self.tau
+        # self.cur_state = cur_state
+        # if (B > diff):
+        #     print('exploring, B: {}, diff: {}'.format(B, diff))
+        #     self.main()
+
+        
 
         # Determine best action after BRTDP.
         if self.is_goal_state(cur_state.get_repr()):
