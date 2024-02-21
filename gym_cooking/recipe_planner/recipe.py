@@ -83,7 +83,6 @@ class Recipe:
 
     def get_con_actions(self):
         return self.con_actions
-    
 
     def get_actions(self):
         """ Returns all the actions needed to complete recipe """

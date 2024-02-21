@@ -152,6 +152,7 @@ class RealAgent:
         # Refresh for incomplete subtasks.
         if self.subtask_complete:
             if self.subtask in self.incomplete_subtasks:
+                # once subtask is complete, it is removed
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
         print('{} incomplete subtasks:'.format(
@@ -196,7 +197,7 @@ class RealAgent:
         print('right before planning, {} had old subtask {}, new subtask {}, subtask complete {}'.format(self.name, self.subtask, self.new_subtask, self.subtask_complete))
 
         # Check whether this subtask is done.
-            # if subtask is done, update to next one
+
         if self.new_subtask is not None:
             self.def_subtask_completion(env=env)
 

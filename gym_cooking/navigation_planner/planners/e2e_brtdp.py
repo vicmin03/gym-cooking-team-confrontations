@@ -312,7 +312,7 @@ class E2E_BRTDP:
 
         # Relevant objects for subtask allocation.
         self.start_obj, self.goal_obj = nav_utils.get_subtask_obj(subtask)
-        self.subtask_action_obj = nav_utils.get_subtask_action_obj(subtask)
+        self.subtask_action_obj = nav_utils.get_subtask_action_obj(subtask)  # the relevant grid space for subtask
 
     def _define_goal_state(self, env, subtask):
         """Defining a goal state (termination condition on state) for subtask."""
@@ -326,6 +326,7 @@ class E2E_BRTDP:
                     list(filter(lambda o: o in set(env.world.get_all_object_locs(
                             self.subtask_action_obj)),
                     env.world.get_object_locs(self.goal_obj, is_held=False))))
+            print("current objects for delivery: ", self.cur_obj_count)
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
             self.is_goal_state = lambda h: self.has_more_obj(
                     len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
@@ -339,6 +340,13 @@ class E2E_BRTDP:
                 self.is_subtask_complete = lambda w: self.has_more_obj(
                         len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
                         w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+                
+        # for trash subtask, condition is met if count of object being held is lowered
+        elif isinstance(subtask, Trash):
+            self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(
+                            self.subtask_action_obj)),
+                    env.world.get_object_locs(self.goal_obj, is_held=False))))
+            
         else:
             # Get current count of desired objects.
             self.cur_obj_count = len(env.world.get_all_object_locs(self.goal_obj))

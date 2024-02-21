@@ -375,8 +375,6 @@ class OvercookedEnvironment(gym.Env):
             A_locs = self.world.get_object_locs(
                     obj=start_obj, is_held=False) + list(map(lambda a: a.location, list(
                         filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
-
-            # Where to put hoarded ingredients (near team agents)
             
             # finds location of other agents on team
             agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
@@ -404,7 +402,7 @@ class OvercookedEnvironment(gym.Env):
         # for Merge operator on Steal subtasks, we look for dishes last held by the other team and put them closer to our team's agents
         elif isinstance(subtask, recipe.Steal):
             # locations of dishes that can be stolen
-            A_locs = list(filter(lambda a: a.last_held != agent.team, self.world.get_all_object_locs(obj=start_obj)))
+            A_locs = list(filter(lambda a: a.last_held != agent.team, map(lambda b: self.world.get_gridsquare_at(b), self.world.get_object_locs(obj=start_obj, is_held=False))))
              
             # locations near this team's agents
             agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
