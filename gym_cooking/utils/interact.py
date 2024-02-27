@@ -1,11 +1,15 @@
 from utils.core import *
+from navigation_planner import utils
 import numpy as np
+
 
 def interact(agent, world):
     """Carries out interaction for this agent taking this action in this world.
 
     The action that needs to be executed is stored in `agent.action`.
     """
+
+    # print("number of tomatoes in the world: ", str(len(list(world.get_all_object_locs(utils.get_obj("Tomato", "is_object", FoodState.FRESH))))))
 
     # agent does nothing (i.e. no arrow key)
     if agent.action == (0, 0):
@@ -25,19 +29,18 @@ def interact(agent, world):
     elif agent.holding is not None:
         # if delivery in front --> deliver
         if isinstance(gs, Delivery):
-            # removes any dishes already there
             obj = agent.holding
             if obj.is_deliverable():
-                already_del = world.get_object_at(gs.location, None, find_held_objects=False)
-                if already_del is not None:
-                    world.remove(already_del)
-                gs.acquire(obj)
+                # # removes any dishes already there
+                # already_del = world.get_object_at(gs.location, None, find_held_objects=False)
+                # if already_del is not None:
+                #     world.remove(already_del)
+                    
+                # gs.acquire(obj)
+                world.remove(obj)
                 agent.release()
                 print('\nDelivered {} for team {}!'.format(obj.full_name, agent.get_team()))
-                # if isinstance(gs, DeliveryBlue):
-                #     return "blue"
-                # elif isinstance(gs, DeliveryRed):
-                #      return "red"
+  
             # returns the number of team that last held the dish
             return obj.last_held
 

@@ -237,7 +237,7 @@ class BayesianDelegator(Delegator):
             A float probability update of whether agents in subtask_agent_names are
             performing subtask.
         """
-        print("[BayesianDelgation.prob_nav_actions] Calculating probs for subtask {} by {}".format(str(subtask), ' & '.join(subtask_agent_names)))
+        # print("[BayesianDelgation.prob_nav_actions] Calculating probs for subtask {} by {}".format(str(subtask), ' & '.join(subtask_agent_names)))
         assert len(subtask_agent_names) == 1 or len(subtask_agent_names) == 2
 
         # Perform inference over None subtasks.

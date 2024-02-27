@@ -271,6 +271,10 @@ class World:
     def get_all_object_locs(self, obj):
         return list(set(self.get_object_locs(obj=obj, is_held=True) + self.get_object_locs(obj=obj, is_held=False)))
 
+    # gets all the objects last held by a given team
+    def get_all_team_objects(self, team):
+        return list(filter(lambda a: a.last_held == team, self.objects))
+
     def get_object_at(self, location, desired_obj, find_held_objects):
         # Map obj => location => filter by location => return that object.
         all_objs = self.get_object_list()

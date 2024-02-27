@@ -214,6 +214,7 @@ class OvercookedEnvironment(gym.Env):
         else:
             self.game = None
 
+        # returns a copy of the environment as an observation 
         return copy.copy(self)
 
     def close(self):
@@ -388,6 +389,8 @@ class OvercookedEnvironment(gym.Env):
 
             if len(B_locs) == 0:
                 B_locs = agent_locs   
+            
+            print("Trying to hoard so want to take", A_locs, " to ", B_locs)
         
         # for Merge operator on Trash subtasks, we look at trashcan spaces and put whatever the agent is holding there
         elif isinstance(subtask, recipe.Trash):
@@ -401,9 +404,6 @@ class OvercookedEnvironment(gym.Env):
 
         # for Merge operator on Steal subtasks, we look for dishes last held by the other team and put them closer to our team's agents
         elif isinstance(subtask, recipe.Steal):
-            # locations of dishes that can be stolen
-            A_locs = list(filter(lambda a: a.last_held != agent.team, map(lambda b: self.world.get_gridsquare_at(b), self.world.get_object_locs(obj=start_obj, is_held=False))))
-             
             # locations near this team's agents
             agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
 
@@ -414,6 +414,15 @@ class OvercookedEnvironment(gym.Env):
             
             B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
         
+            # locations of dishes that can be stolen
+            # A_locs = list(filter(lambda a: a.last_held != agent.team, map(lambda b: self.world.get_gridsquare_at(b), self.world.get_object_locs(obj=start_obj, is_held=False))))
+            A_locs = self.world.get_object_locs(
+                    obj=start_obj, is_held=False) + list(
+                            map(lambda a: a.location, list(
+                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+            A_locs = list(filter(lambda a: a not in B_locs, A_locs))
+
+
         else:
             return [], []
         return A_locs, B_locs
