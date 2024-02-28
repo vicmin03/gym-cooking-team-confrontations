@@ -226,11 +226,13 @@ def get_subtask_obj(subtask):
     elif isinstance(subtask, recipe.Steal):
         # steal dishes from other team
         start_obj = get_obj(obj_string=subtask.args[0],
-                type_="is_object", state=FoodState.CHOPPED)
-        goal_obj = get_obj(obj_string=subtask.args[0],
-                type_="is_object", state=FoodState.CHOPPED)
-
-
+                type_="is_object", state=FoodState.FRESH)
+        # Correct the state.
+        state = start_obj.contents[0].state_seq[-1] if not isinstance(start_obj.contents[0], Plate) else start_obj.contents[1].state_seq[-1]
+        start_obj = get_obj(obj_string=subtask.args[0],
+                type_="is_object", state=state)
+        goal_obj = copy.copy(start_obj)
+        
     elif subtask is None:
         return None, None
 
