@@ -74,11 +74,9 @@ class Recipe:
             self.con_actions.add(recipe.Hoard(item))
 
     def add_trash_actions(self):
-        print("Adding trash actions")
         self.con_actions.add(recipe.Trash(self.full_plate_name))
 
     def add_steal_actions(self):
-        print("Adding steal actions")
         self.con_actions.add(recipe.Steal(self.full_plate_name))
 
     def get_con_actions(self):

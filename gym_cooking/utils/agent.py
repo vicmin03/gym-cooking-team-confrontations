@@ -113,7 +113,8 @@ class RealAgent:
         all_subtasks = [subtask for path in subtasks for subtask in path]
         all_subtasks += self.recipes[0].get_con_actions()
 
-        print("Getting subtasks agent can perform: ", all_subtasks)
+
+        # print("Getting subtasks agent can perform: ", all_subtasks)
         # Uncomment below to view graph for recipe path i
         # i = 0
         # pg = recipe_utils.make_predicate_graph(self.sw.initial, recipe_paths[i])
@@ -260,6 +261,28 @@ class RealAgent:
                     len(list(filter(lambda o: o in
                 set(env.world.get_all_object_locs(obj=self.subtask_action_object)),
                 w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+            
+        # For Trash subtask, remove object from world so lower number of goal objects
+        elif isinstance(self.new_subtask, Trash):
+            print("Goal obj to trash: ", self.goal_obj)
+            # gets count of all goal objects that haven't already been delivered
+            self.cur_obj_count = len(list(env.world.get_all_object_locs(self.goal_obj)))
+                # but can't trash delivered objects - remove delivered objects?
+            print("count of relevant dishes", self.cur_obj_count)
+            self.has_less_obj = lambda x: int(x) < self.cur_obj_count
+            self.is_subtask_complete = lambda w: self.has_less_obj(
+                    len(w.get_all_object_locs(self.goal_obj)))
+
+        elif isinstance(self.new_subtask, Hoard):
+            # gets number of ingredients currently in world (not including multiples stocked at spawn)
+            self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
+            print("ingredients " , self.start_obj, " are: ", self.cur_obj_count)
+            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.start_obj, is_held=False))))
+            self.is_subtask_complete = lambda w: print("should be less than ", len(set(w.get_object_locs(self.start_obj, is_held=False))))
+            print("are there more objects on counters now?")
+
+
         # Otherwise, for other subtasks, check based on # of objects.
         else:
             # Current count of desired objects.

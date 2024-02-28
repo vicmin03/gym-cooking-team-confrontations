@@ -232,7 +232,8 @@ def get_subtask_obj(subtask):
         start_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=state)
         goal_obj = copy.copy(start_obj)
-        
+
+
     elif subtask is None:
         return None, None
 
