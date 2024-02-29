@@ -3,6 +3,8 @@ import recipe_planner.utils as recipe
 # core modules
 from utils.core import Object
 
+import matplotlib as plt
+
 # helpers
 import networkx as nx
 import copy
@@ -22,7 +24,9 @@ class STRIPSWorld:
                         self.initial.add_predicate(recipe.Fresh(obj_name))
 
     def generate_graph(self, recipe, max_path_length):
-        all_actions = recipe.actions   # set
+        # all_actions = recipe.actions   # set
+        all_actions = recipe.actions.union(recipe.get_con_actions())  # set
+        print("Need to perform ", all_actions)
         goal_state = None
 
         new_preds = set()
@@ -75,7 +79,7 @@ class STRIPSWorld:
                 union_action_path = union_action_path | set(action_path)
             # print('all tasks for recipe {}: {}\n'.format(recipe, ', '.join([str(a) for a in union_action_path])))
             action_paths.append(union_action_path)
-
+        
         return action_paths
         
 

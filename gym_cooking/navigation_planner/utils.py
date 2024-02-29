@@ -168,7 +168,13 @@ def get_subtask_action_obj(subtask):
 
 # get food object involved in subtask
 def get_subtask_obj(subtask):
-    if isinstance(subtask, recipe.Chop):
+    if isinstance(subtask, recipe.Get):
+        start_obj = get_obj(obj_string=subtask.args[0],
+            type_="is_object", state=FoodState.FRESH)
+        goal_obj = get_obj(obj_string=subtask.args[0],
+                type_="is_object", state=FoodState.FRESH)
+        
+    elif isinstance(subtask, recipe.Chop):
         # start off raw, get chopped
         start_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=FoodState.FRESH)

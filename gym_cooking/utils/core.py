@@ -138,19 +138,6 @@ class Delivery(GridSquare):
     def get_repr(self):
         return GridSquareRepr(name=self.name, location=self.location, holding= None)
 
-# two different types of delivery space for playing with teams
-class DeliveryBlue(Delivery):
-    def __init__(self, location):
-        GridSquare.__init__(self, "DeliveryBlue", location)
-        self.rep = Rep.DELIVERYBLUE
-        self.holding = []
-
-class DeliveryRed(Delivery):
-    def __init__(self, location):
-        GridSquare.__init__(self, "DeliveryRed", location)
-        self.rep = Rep.DELIVERYRED
-        self.holding = []
-
 class Trashcan(GridSquare):
     def __init__(self, location):
         GridSquare.__init__(self, "Trashcan", location)
@@ -200,6 +187,9 @@ class Object:
 
     def get_name(self):
         return self.full_name
+
+    def get_location(self):
+        return self.location
 
     def update_names(self):
         # concatenate names of alphabetically sorted items, e.g.
@@ -402,8 +392,6 @@ RepToClass = {
     Rep.LETTUCE: globals()['Lettuce'],
     Rep.ONION: globals()['Onion'],
     Rep.PLATE: globals()['Plate'],
-    Rep.DELIVERYBLUE: globals()['DeliveryBlue'],
-    Rep.DELIVERYRED: globals()['DeliveryRed'],
     Rep.TRASHCAN: globals()['Trashcan'],
 }
 

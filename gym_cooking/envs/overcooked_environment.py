@@ -276,7 +276,7 @@ class OvercookedEnvironment(gym.Env):
             self.successful = False
             return True
 
-        assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
+        # assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
 
         # # Done if subtask is completed.
         # for subtask in self.all_subtasks:
@@ -403,10 +403,16 @@ class OvercookedEnvironment(gym.Env):
 
         # for Merge operator on Steal subtasks, we look for dishes last held by the other team and put them closer to our team's agents
         elif isinstance(subtask, recipe.Steal):
-            # locations of dishes that can be stolen
-            dish_locs = map(lambda g: self.world.get_gridsquare_at(g), self.world.get_object_locs(obj=start_obj, is_held=False))
-            A_locs = list(filter(lambda a: a.last_held != agent.team, filter(lambda b: not isinstance(b, Delivery), dish_locs)))
             
+            # need to get dish objects to check who last held them
+
+            dishes = map(lambda d: self.world.get_object_at(d, None, find_held_objects = False), self.world.get_object_locs(obj=start_obj, is_held=False))
+            # dishes = map(lambda d: self.world.get_object_at(d), self.world.get_object_locs(obj=start_obj, is_held=False))
+            print("Dish objects ", dishes)
+            # filter to get locations of dishes that were last held by the other team
+
+            A_locs = map(lambda l: self.world.get_gridsquare_at(l.get_location()), list(filter(lambda a: a.last_held != agent.team, dishes)))
+            print("Locations of dishes: ", A_locs)
             # A_locs = list(filter(lambda a: a.last_held != agent.team, map(lambda b: self.world.get_gridsquare_at(b), self.world.get_object_locs(obj=start_obj, is_held=False))))
 
             # locations near this team's agents

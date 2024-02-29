@@ -113,7 +113,6 @@ class RealAgent:
         all_subtasks = [subtask for path in subtasks for subtask in path]
         all_subtasks += self.recipes[0].get_con_actions()
 
-
         # print("Getting subtasks agent can perform: ", all_subtasks)
         # Uncomment below to view graph for recipe path i
         # i = 0

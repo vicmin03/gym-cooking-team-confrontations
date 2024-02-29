@@ -34,10 +34,6 @@ def interact(agent, world):
                 gs.acquire(obj)
                 agent.release()
                 print('\nDelivered {} for team {}!'.format(obj.full_name, agent.get_team()))
-                # if isinstance(gs, DeliveryBlue):
-                #     return "blue"
-                # elif isinstance(gs, DeliveryRed):
-                #      return "red"
             # returns the number of team that last held the dish
             return obj.last_held
 
