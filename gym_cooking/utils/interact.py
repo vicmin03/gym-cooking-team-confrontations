@@ -33,9 +33,12 @@ def interact(agent, world):
                     world.remove(already_del)
                 gs.acquire(obj)
                 agent.release()
-                print('\nDelivered {} for team {}!'.format(obj.full_name, agent.get_team()))
-            # returns the number of team that last held the dish
-            return obj.last_held
+                if isinstance(gs, DeliveryBlue):
+                    return 1
+                elif isinstance(gs, DeliveryRed):
+                     return 2
+            # returns number of corresponding team to increase their score
+            # return obj.last_held
 
         
         # if trashcan in front --> delete object

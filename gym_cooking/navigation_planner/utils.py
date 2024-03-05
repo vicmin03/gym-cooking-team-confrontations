@@ -152,7 +152,6 @@ def get_subtask_action_obj(subtask):
     elif isinstance(subtask, recipe.Hoard):
         # obj = get_obj(obj_string=subtask.args[0], type_="is_supply", state=None)
         obj = get_obj(obj_string="Counter", type_="is_supply", state=None)
-        print("Counters: ", obj)
     elif isinstance(subtask, recipe.Chop): 
         obj = get_obj(obj_string="Cutboard", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Deliver):
@@ -190,7 +189,7 @@ def get_subtask_obj(subtask):
         start_obj = get_obj(obj_string=subtask.args[0],
                 type_="is_object", state=FoodState.FRESH)
         goal_obj = get_obj(obj_string=subtask.args[0],
-                type_="is_object", state=FoodState.CHOPPED)
+                type_="is_object", state=FoodState.FRESH)
 
     elif isinstance(subtask, recipe.Merge):
         # only need in last state

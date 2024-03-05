@@ -183,8 +183,8 @@ Post: Fresh(X)
 class Hoard(Action):
     def __init__(self, obj, pre=None, post_add=None):
         self.args = (obj,)
-        self.pre_default = [Chopped(obj)]
-        self.post_add_default = [Chopped(obj)]
+        self.pre_default = [Fresh(obj)]
+        self.post_add_default = [Fresh(obj)]
         Action.__init__(self, 'Hoard', pre, post_add)
 
 '''

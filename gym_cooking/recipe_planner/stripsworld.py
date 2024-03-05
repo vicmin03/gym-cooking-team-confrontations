@@ -26,7 +26,6 @@ class STRIPSWorld:
     def generate_graph(self, recipe, max_path_length):
         # all_actions = recipe.actions   # set
         all_actions = recipe.actions.union(recipe.get_con_actions())  # set
-        print("Need to perform ", all_actions)
         goal_state = None
 
         new_preds = set()

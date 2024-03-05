@@ -185,7 +185,7 @@ class E2E_BRTDP:
         counter = 0
         start_repr = self.start.get_repr()
         diff = self.v_u[(start_repr, self.subtask)] - self.v_l[(start_repr, self.subtask)]
-        print("DIFF AT START: {}".format(diff))
+        # print("DIFF AT START: {}".format(diff))
 
         while True:
             counter += 1
@@ -233,7 +233,7 @@ class E2E_BRTDP:
             self.repr_init(env_state=x)
             self.value_init(env_state=x)
 
-        print("RUN SAMPLE EXPLORED {} STATES, took {}".format(len(traj), time.time()-start_time))
+        # print("RUN SAMPLE EXPLORED {} STATES, took {}".format(len(traj), time.time()-start_time))
         while not(traj.empty()):
             x = traj.pop()
             x_repr = x.get_repr()

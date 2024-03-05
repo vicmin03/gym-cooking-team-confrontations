@@ -74,11 +74,10 @@ class Recipe:
             self.con_actions.append(recipe.Hoard(item))
 
     def add_trash_actions(self):
-        # self.con_actions.add(recipe.Trash(self.full_plate_name))
         self.con_actions.append(recipe.Trash(self.full_plate_name))
 
     def add_steal_actions(self):
-        self.con_actions.add(recipe.Steal(self.full_plate_name))
+        self.con_actions.append(recipe.Steal(self.full_plate_name))
 
     def get_con_actions(self):
         return self.con_actions
@@ -97,8 +96,8 @@ class SimpleTomato(Recipe):
         self.add_ingredient(Tomato(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
-        # self.add_hoard_actions()
-        self.add_trash_actions()
+        self.add_hoard_actions()
+        # self.add_trash_actions()
         # self.add_steal_actions()
 
 class SimpleLettuce(Recipe):
