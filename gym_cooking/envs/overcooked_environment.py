@@ -382,15 +382,29 @@ class OvercookedEnvironment(gym.Env):
             agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
 
             # find location of empty counters near team agents
-            counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
-            for team_agent in agent_locs:
-                nearby_locs = (list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs)))
+            # counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+            # # print("All counters are : ", counter_locs)
+            # for team_agent in agent_locs:
+            #     nearby_locs = (list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs)))
             
-            B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
+            # B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
+            
+            # if len(B_locs) == 0:
+            #     B_locs = agent_locs   
 
-            if len(B_locs) == 0:
-                B_locs = agent_locs   
-        
+            B_locs = self.world.get_all_object_locs(obj=nav_utils.get_subtask_action_obj(recipe.Deliver("Tomato")))
+
+            # A: Object that can be delivered.
+            A_locs = self.world.get_object_locs(
+                    obj=start_obj, is_held=False) + list(
+                            map(lambda a: a.location, list(
+                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+            A_locs = list(filter(lambda a: a not in B_locs, A_locs))
+
+            
+                
+            
+
         # for Merge operator on Trash subtasks, we look at trashcan spaces and put whatever the agent is holding there
         elif isinstance(subtask, recipe.Trash):
             A_locs = self.world.get_object_locs(
@@ -425,6 +439,10 @@ class OvercookedEnvironment(gym.Env):
             
             B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
         
+        # elif isinstance(subtask, recipe.Get):
+        #     A_locs = self.world.get_object_locs(obj=start_obj, is_held=False)
+        #     B_locs = [(agent.location)]
+
         else:
             return [], []
         return A_locs, B_locs

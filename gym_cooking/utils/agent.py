@@ -101,6 +101,18 @@ class RealAgent:
         self.update_subtasks(env=obs)
         self.new_subtask, self.new_subtask_agent_names = self.delegator.select_subtask(
             agent_name=self.name)
+        # !!! if new_subtask is hoard subtask, need to get object first 
+        if isinstance(self.new_subtask, recipe_utils.Hoard):
+            if self.holding is None or not self.holding.is_chopped():
+                self.new_subtask = recipe_utils.Chop(self.new_subtask.args[0])
+                print("Want to do hoard so first need to ", self.new_subtask)     
+        
+        # !!!for testing - instead of deliver task, trash the plate instead
+        if isinstance(self.new_subtask, recipe_utils.Deliver):
+            self.new_subtask = recipe_utils.Trash(self.new_subtask.args[0])
+            print("Instead of delivering, going to try and trash dish ", self.new_subtask)     
+        
+
         self.plan(copy.copy(obs))
         return self.action
 
@@ -109,11 +121,14 @@ class RealAgent:
         self.sw = STRIPSWorld(world, self.recipes)
         # [path for recipe 1, path for recipe 2, ...] where each path is a list of actions.
         subtasks = self.sw.get_subtasks(max_path_length=self.arglist.max_num_subtasks)
+        all_subtasks = []
         
-        all_subtasks = [subtask for path in subtasks for subtask in path]
+        # add subtasks for as many ingredients as there are available in the world
+       
+        all_subtasks += [subtask for path in subtasks for subtask in path]
         all_subtasks += self.recipes[0].get_con_actions()
 
-        # print("Getting subtasks agent can perform: ", all_subtasks)
+        print("Getting subtasks agent can perform: ", all_subtasks)
         # Uncomment below to view graph for recipe path i
         # i = 0
         # pg = recipe_utils.make_predicate_graph(self.sw.initial, recipe_paths[i])
@@ -154,6 +169,9 @@ class RealAgent:
             if self.subtask in self.incomplete_subtasks:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
+            # if just finished delivering a recipe, re-adds subtasks
+            # if isinstance(self.subtask, recipe_utils.Deliver):
+            #     self.setup_subtasks()
         print('{} incomplete subtasks:'.format(
             (self.name, self.color)),
             ', '.join(str(t) for t in self.incomplete_subtasks))
@@ -274,12 +292,39 @@ class RealAgent:
 
         elif isinstance(self.new_subtask, Hoard):
             # gets number of ingredients currently in world (not including multiples stocked at spawn)
-            self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
-            print("ingredients " , self.start_obj, " are: ", self.cur_obj_count)
+            # self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
+
+            # self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            # self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.start_obj, is_held=False))))
+            # self.cur_obj_count = len(set(env.world.get_all_object_locs(self.subtask_action_object)))
+
+            # self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+
+            # if self.holding is not None and self.holding == self.goal_obj:
+            #     self.is_subtask_complete = lambda w: self.has_more_obj(
+            #             len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)),
+            #             w.get_object_locs(self.goal_obj, is_held=False)))) + 1)
+            # else:
+            #     self.is_subtask_complete = lambda w: self.has_more_obj(
+            #             len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)),
+            #             w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+
+            self.cur_obj_count = len(list(
+                filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)),
+                env.world.get_object_locs(obj=self.goal_obj, is_held=False))))
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.start_obj, is_held=False))))
-            self.is_subtask_complete = lambda w: print("should be less than ", len(set(w.get_object_locs(self.start_obj, is_held=False))))
-            print("are there more objects on counters now?")
+            self.is_subtask_complete = lambda w: self.has_more_obj(
+                    len(list(filter(lambda o: o in
+                set(env.world.get_all_object_locs(obj=self.subtask_action_object)),
+                w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+
+        # elif isinstance(self.new_subtask, Get):
+        #     self.is_subtask_complete = lambda w: self.holding is not None and self.holding == self.goal_obj
+        #     self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
+        #     self.same_num_obj = lambda x: int(x) > self.cur_obj_count
+        #     # if already holding the correct object, already at goal_state
+
+        #     self.is_goal_state = lambda h: self.same_num_obj(len(set(self.repr_to_env_dict[h].world.get_object_locs(self.start_obj, is_held=False))))
 
 
         # Otherwise, for other subtasks, check based on # of objects.

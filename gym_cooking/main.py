@@ -75,7 +75,6 @@ def initialize_agents(arglist):
 
             # phase 2: read in recipe list
             elif phase == 2:
-                print(line)
                 recipes.append(globals()[line]())
 
             # Phase 3: Read whether teams (competitive) mode or coop mode

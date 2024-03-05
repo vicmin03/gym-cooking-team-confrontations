@@ -254,7 +254,7 @@ class E2E_BRTDP:
 
         # Run until convergence or until you max out on iteration
         while (diff > self.alpha) and (main_counter < self.main_cap):
-            print('\nstarting main loop #', main_counter)
+            # print('\nstarting main loop #', main_counter)
             new_upper = self.v_u[(start_repr, self.subtask)]
             new_lower = self.v_l[(start_repr, self.subtask)]
             new_diff = new_upper - new_lower
@@ -262,13 +262,13 @@ class E2E_BRTDP:
                 self.start.update_display()
                 self.start.display()
                 self.start.print_agents()
-                print('old: upper {}, lower {}'.format(upper, lower))
-                print('new: upper {}, lower {}'.format(new_upper, new_lower))
+                # print('old: upper {}, lower {}'.format(upper, lower))
+                # print('new: upper {}, lower {}'.format(new_upper, new_lower))
             diff = new_diff
             upper = new_upper
             lower = new_lower
             main_counter +=1
-            print('diff = {}, self.alpha = {}'.format(diff, self.alpha))
+            # print('diff = {}, self.alpha = {}'.format(diff, self.alpha))
             self.runSampleTrial()
 
     def _configure_planner_level(self, env, subtask_agent_names, other_agent_planners):
@@ -346,8 +346,11 @@ class E2E_BRTDP:
             # gets count of all goal objects that haven't already been delivered
             self.cur_obj_count = len(list(env.world.get_all_object_locs(self.goal_obj)))
                 # but can't trash delivered objects - remove delivered objects?
-
             self.has_less_obj = lambda x: int(x) < self.cur_obj_count
+            
+            self.is_goal_state = lambda h: self.has_less_obj(
+                    len(list(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj))))
+
             if self.removed_object is not None and self.removed_object == self.goal_obj:
                 self.is_subtask_complete = lambda w: self.has_less_obj(
                         len(w.get_all_object_locs(self.goal_obj)) + 1)
@@ -369,12 +372,29 @@ class E2E_BRTDP:
             # goal complete if count of ingredients + 1 and it is placed on a counter
         elif isinstance(subtask, Hoard):
             # gets number of ingredients currently in world (not including multiples stocked at spawn)
-            self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
+            # self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
+            self.cur_obj_count = len(set(env.world.get_all_object_locs(self.subtask_action_obj)))
 
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+
             self.is_goal_state = lambda h: self.has_more_obj(
-                len(set(self.repr_to_env_dict[h].world.get_object_locs(self.start_obj, is_held=False))))
-            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.start_obj, is_held=False))))
+                    len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+                    self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))
+
+            if self.removed_object is not None and self.removed_object == self.goal_obj:
+                self.is_subtask_complete = lambda w: self.has_more_obj(
+                        len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+                        w.get_object_locs(self.goal_obj, is_held=False)))) + 1)
+            else:
+                self.is_subtask_complete = lambda w: self.has_more_obj(
+                        len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+                        w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+                
+
+            # self.is_goal_state = lambda h: self.has_more_obj(
+            #     len(set(self.repr_to_env_dict[h].world.get_object_locs(self.start_obj, is_held=False))))
+            # self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.start_obj, is_held=False))))
+
 
         else:
             # Get current count of desired objects.
@@ -408,8 +428,6 @@ class E2E_BRTDP:
                 env=env,
                 subtask_agent_names=subtask_agent_names,
                 other_agent_planners=other_agent_planners)
-
-        print(subtask_agent_names)
 
         # Configuring subtask related information.
         self._configure_subtask_information(
