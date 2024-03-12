@@ -34,7 +34,7 @@ class RealAgent:
         self.name = name
         self.color = id_color
         self.recipes = recipes
-        self.team = 1  # what team agent is on - cooperates with same team, opponents with diff. teams
+        self.team = 1  # what team agent is on - cooperates with same team, opponents with diff. teams - default team is 1 (blue)
 
         # Bayesian Delegation.
         self.reset_subtasks()
@@ -119,8 +119,8 @@ class RealAgent:
         
         # add subtasks for as many ingredients as there are available in the world
        
-        # all_subtasks += [subtask for path in subtasks for subtask in path]
-        all_subtasks += self.recipes[0].get_con_actions()
+        all_subtasks += [subtask for path in subtasks for subtask in path]
+        # all_subtasks += self.recipes[0].get_con_actions()
 
         print("Getting subtasks agent can perform: ", all_subtasks)
         # Uncomment below to view graph for recipe path i
@@ -137,7 +137,7 @@ class RealAgent:
                 all_agent_names=env.get_agent_names(),
                 model_type=self.model_type,
                 planner=self.planner,
-                none_action_prob=self.none_action_prob)
+                none_action_prob=self.none_action_prob, team=self.team)
 
     def reset_subtasks(self):
         """Reset subtasks---relevant for Bayesian Delegation."""
@@ -240,7 +240,7 @@ class RealAgent:
             action = self.planner.get_next_action(
                     env=env, subtask=self.new_subtask,
                     subtask_agent_names=self.new_subtask_agent_names,
-                    other_agent_planners=other_agent_planners)
+                    other_agent_planners=other_agent_planners, team=self.team)
 
             # If joint subtask, pick your part of the simulated joint plan.
             if self.name not in self.new_subtask_agent_names and self.planner.is_joint:
@@ -259,7 +259,7 @@ class RealAgent:
     def def_subtask_completion(self, env):
         # Determine desired objects.
         self.start_obj, self.goal_obj = nav_utils.get_subtask_obj(subtask=self.new_subtask)
-        self.subtask_action_object = nav_utils.get_subtask_action_obj(subtask=self.new_subtask)
+        self.subtask_action_object = nav_utils.get_subtask_action_obj(subtask=self.new_subtask, team=self.team)
 
         # Define termination conditions for agent subtask.
         # For Deliver subtask, desired object should be at a Deliver location.

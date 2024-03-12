@@ -17,7 +17,7 @@ SubtaskAllocation = namedtuple("SubtaskAllocation", "subtask subtask_agent_names
 class BayesianDelegator(Delegator):
 
     def __init__(self, agent_name, all_agent_names,
-            model_type, planner, none_action_prob):
+            model_type, planner, none_action_prob, team):
         """Initializing Bayesian Delegator for agent_name.
 
         Args:
@@ -31,6 +31,8 @@ class BayesianDelegator(Delegator):
         """
         self.name = 'Bayesian Delegator'
         self.agent_name = agent_name
+        self.team = team
+        print("Initialising delegator with TEAM", self.team)
         self.all_agent_names = all_agent_names
         self.probs = None
         self.model_type = model_type
@@ -68,8 +70,6 @@ class BayesianDelegator(Delegator):
         subtask allocations (combinations of all_agent_names and incomplete_subtasks)."""
         if self.model_type == "greedy":
             probs = self.add_greedy_subtasks()
-        # elif self.model_type == "rl":
-        #     probs = self.add_rl_subtasks()
         elif self.model_type == "dc":
             probs = self.add_dc_subtasks()
         else:
@@ -85,7 +85,7 @@ class BayesianDelegator(Delegator):
         this_agent = next(a for a in env.sim_agents if a.name == self.agent_name)
         agent_locs = [agent.location for agent in list(filter(lambda a: a.name in subtask_agent_names, env.sim_agents))]
         start_obj, goal_obj = get_subtask_obj(subtask=subtask)
-        subtask_action_obj = get_subtask_action_obj(subtask=subtask)
+        subtask_action_obj = get_subtask_action_obj(subtask=subtask, team=this_agent.team)
         A_locs, B_locs = env.get_AB_locs_given_objs(
                 subtask=subtask,
                 agent = this_agent,
@@ -102,6 +102,7 @@ class BayesianDelegator(Delegator):
         return distance < env.world.perimeter
 
     def get_lower_bound_for_subtask_alloc(self, obs, subtask, subtask_agent_names):
+        print("GETTING LOWER BOUND", subtask, subtask_agent_names)
         """Return the value lower bound for a subtask allocation
         (subtask x subtask_agent_names)."""
         if subtask is None:
@@ -110,7 +111,7 @@ class BayesianDelegator(Delegator):
                 env=obs,
                 subtask=subtask,
                 subtask_agent_names=subtask_agent_names,
-                other_agent_planners={})
+                other_agent_planners={}, team=self.team)
         value = self.planner.v_l[(self.planner.cur_state.get_repr(), subtask)]
         return value
 
@@ -183,6 +184,8 @@ class BayesianDelegator(Delegator):
         for other_agent_name in self.all_agent_names:
             # Skip over myself.
             if other_agent_name != self.agent_name:
+                team = obs.get_agent_team(other_agent_name)
+                print("The other agent is:", other_agent_name, "from team ", team)
                 # Get most likely subtask and subtask agents for other agent
                 # based on my beliefs.
                 subtask, subtask_agent_names = self.select_subtask(
@@ -196,9 +199,9 @@ class BayesianDelegator(Delegator):
                 # Assume your planner for other agents with the right settings.
                 planner = copy.copy(self.planner)
                 planner.set_settings(env=copy.copy(obs),
-                                     subtask=subtask,
-                                     subtask_agent_names=subtask_agent_names
-                                     )
+                                    subtask=subtask,
+                                    subtask_agent_names=subtask_agent_names, team=team
+                                    )
                 planners[other_agent_name] = planner
         return planners
 
@@ -413,7 +416,7 @@ class BayesianDelegator(Delegator):
         if max_subtask_alloc is not None:
             for t in max_subtask_alloc:
                 if agent_name in t.subtask_agent_names:
-                    print("Selected the subtask: ", t.subtask, "with object", get_subtask_obj(subtask=t.subtask))
+                    # print("Selected the subtask: ", t.subtask, "with object", get_subtask_obj(subtask=t.subtask))
                     return t.subtask, t.subtask_agent_names
         return None, agent_name
 

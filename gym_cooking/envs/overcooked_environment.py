@@ -51,6 +51,10 @@ class OvercookedEnvironment(gym.Env):
         self.team1_score = 0
         self.team2_score = 0
 
+        # names of agents on each team
+        self.team1_agents = []
+        self.team2_agents = []
+
     def get_repr(self):
         return self.world.get_repr() + tuple([agent.get_repr() for agent in self.sim_agents])
 
@@ -157,7 +161,12 @@ class OvercookedEnvironment(gym.Env):
                             name='agent-' + str(len(self.sim_agents) + 1),
                             id_color=TEAM_COLORS[len(self.sim_agents) % 2][int(len(self.sim_agents)/2)],
                             location=(int(loc[0]), int(loc[1])))
-                        sim_agent.set_team((len(self.sim_agents) % 2) + 1)
+                        team = (len(self.sim_agents) % 2) + 1
+                        sim_agent.set_team(team)
+                        if team == 1:
+                            self.team1_agents.append('agent-' + str(len(self.sim_agents) + 1))
+                        else:
+                            self.team2_agents.append('agent-' + str(len(self.sim_agents) + 1))
                         self.sim_agents.append(sim_agent)
 
                 elif phase == 5:
@@ -312,9 +321,14 @@ class OvercookedEnvironment(gym.Env):
             x, y = agent.location
             self.rep[y][x] = str(agent)
 
-
     def get_agent_names(self):
         return [agent.name for agent in self.sim_agents]
+    
+    def get_agent_team(self, agent_name):
+        if agent_name in self.team1_agents:
+            return 1
+        elif agent_name in self.team2_agents:
+            return 2
 
     def run_recipes(self):
         """Returns different permutations of completing recipes."""
@@ -325,7 +339,7 @@ class OvercookedEnvironment(gym.Env):
 
         # adding confrontation tasks to possible subtasks
         all_subtasks += self.recipes[0].get_con_actions()
-        print('Subtasks:', all_subtasks, '\n')
+        print('Subtasks:', all_subtasks, '\n') 
         return all_subtasks
         
     def get_AB_locs_given_objs(self, agent, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
@@ -347,8 +361,15 @@ class OvercookedEnvironment(gym.Env):
         # For Merge operator on Deliver subtasks, we look at objects that can be
         # delivered and the Delivery object.
         elif isinstance(subtask, recipe.Deliver):
-            # B: Delivery objects.
-            B_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+            # B: Corresponding delvery locations
+            print("HEY TEAM IS", agent.team)
+            if agent.team == 1:
+                blue_delivery = nav_utils.get_obj(obj_string="DeliveryBlue", type_="is_supply", state=None)
+                B_locs = self.world.get_all_object_locs(obj=blue_delivery)
+                
+            elif agent.team == 2:
+                red_delivery = nav_utils.get_obj(obj_string="DeliveryRed", type_="is_supply", state=None)
+                B_locs = self.world.get_all_object_locs(obj=red_delivery)
 
             # A: Object that can be delivered.
             A_locs = self.world.get_object_locs(
@@ -391,8 +412,6 @@ class OvercookedEnvironment(gym.Env):
             
             if len(B_locs) == 0:
                 B_locs = agent_locs   
-            
-            # B_locs = self.world.get_all_object_locs(obj=nav_utils.get_subtask_action_obj(recipe.Deliver("Tomato")))
 
             # A: Object that can be delivered.
             A_locs = set(self.world.get_object_locs(obj=start_obj, is_held=False) + list(map(lambda a: a.location, list(

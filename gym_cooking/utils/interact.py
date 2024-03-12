@@ -34,9 +34,10 @@ def interact(agent, world):
                 gs.acquire(obj)
                 agent.release()
                 if isinstance(gs, DeliveryBlue):
+                    print("Ready to delivery to blue team")
                     return 1
                 elif isinstance(gs, DeliveryRed):
-                     return 2
+                    return 2
             # returns number of corresponding team to increase their score
             # return obj.last_held
 

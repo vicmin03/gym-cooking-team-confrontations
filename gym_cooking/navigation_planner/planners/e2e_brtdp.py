@@ -304,7 +304,7 @@ class E2E_BRTDP:
                 env.world.remove(Floor(agent.location))
                 env.world.insert(AgentCounter(agent.location))
 
-    def _configure_subtask_information(self, subtask, subtask_agent_names):
+    def _configure_subtask_information(self, subtask, subtask_agent_names, team):
         """Tracking information about subtask allocation."""
         # Subtask allocation
         self.subtask = subtask
@@ -312,9 +312,9 @@ class E2E_BRTDP:
 
         # Relevant objects for subtask allocation.
         self.start_obj, self.goal_obj = nav_utils.get_subtask_obj(subtask)
-        self.subtask_action_obj = nav_utils.get_subtask_action_obj(subtask)
+        self.subtask_action_obj = nav_utils.get_subtask_action_obj(subtask, team)
 
-    def _define_goal_state(self, env, subtask):
+    def _define_goal_state(self, env, subtask, team):
         """Defining a goal state (termination condition on state) for subtask."""
 
         if subtask is None:
@@ -421,7 +421,7 @@ class E2E_BRTDP:
 
         self.is_joint = len(subtask_agent_names) >=2 
 
-    def set_settings(self, env, subtask, subtask_agent_names, other_agent_planners={}):
+    def set_settings(self, env, subtask, subtask_agent_names, team=1, other_agent_planners={}):
         """Configure planner."""
         # Configuring the planner level.
         self._configure_planner_level(
@@ -432,12 +432,12 @@ class E2E_BRTDP:
         # Configuring subtask related information.
         self._configure_subtask_information(
                 subtask=subtask,
-                subtask_agent_names=subtask_agent_names)
+                subtask_agent_names=subtask_agent_names, team=team)
 
         # Defining what the goal is for this planner.
         self._define_goal_state(
                 env=env,
-                subtask=subtask)
+                subtask=subtask, team=team)
 
         # Defining the space of the planner (joint or single).
         self._configure_planner_space(subtask_agent_names=subtask_agent_names)
@@ -614,7 +614,7 @@ class E2E_BRTDP:
         self.value_init(env_state=modified_state)
         return modified_state, other_agent_actions
 
-    def get_next_action(self, env, subtask, subtask_agent_names, other_agent_planners):
+    def get_next_action(self, env, subtask, subtask_agent_names, other_agent_planners, team):
         """Return next action."""
         print("-------------[e2e]-----------")
         self.removed_object = None
@@ -624,7 +624,7 @@ class E2E_BRTDP:
         self.set_settings(
                 env=env, subtask=subtask,
                 subtask_agent_names=subtask_agent_names,
-                other_agent_planners=other_agent_planners)
+                other_agent_planners=other_agent_planners, team=team)
 
         # Modify the state with other_agent_planners (Level 1 Planning).
         cur_state, other_agent_actions = self._get_modified_state_with_other_agent_actions(state=self.start)

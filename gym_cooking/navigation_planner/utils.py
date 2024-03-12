@@ -13,6 +13,8 @@ StringToGridSquare = {
         "Plate"    : Counter,
         "Cutboard" : Cutboard,
         "Delivery" : Delivery,
+        "DeliveryBlue" : DeliveryBlue,
+        "DeliveryRed" : DeliveryRed,
         "Trashcan" : Trashcan,
         "Counter"  : Counter
         }
@@ -146,7 +148,7 @@ def get_obj(obj_string, type_, state, location=(None, None)):
             raise NotImplementedError("Type {} is not recognized".format(type_))
 
 # get the counter location needed to complete subtask
-def get_subtask_action_obj(subtask):
+def get_subtask_action_obj(subtask, team=1):
     if isinstance(subtask, recipe.Get):
         obj = get_obj(obj_string=subtask.args[0], type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Hoard):
@@ -155,7 +157,10 @@ def get_subtask_action_obj(subtask):
     elif isinstance(subtask, recipe.Chop): 
         obj = get_obj(obj_string="Cutboard", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Deliver):
-        obj = get_obj(obj_string="Delivery", type_="is_supply", state=None)
+        if team == 1:
+            obj = get_obj(obj_string="DeliveryBlue", type_="is_supply", state=None)
+        elif team == 2:
+            obj = get_obj(obj_string="DeliveryRed", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Trash):
         obj = get_obj(obj_string="Trashcan", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Steal):
