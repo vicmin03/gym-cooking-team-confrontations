@@ -362,7 +362,6 @@ class OvercookedEnvironment(gym.Env):
         # delivered and the Delivery object.
         elif isinstance(subtask, recipe.Deliver):
             # B: Corresponding delvery locations
-            print("HEY TEAM IS", agent.team)
             if agent.team == 1:
                 blue_delivery = nav_utils.get_obj(obj_string="DeliveryBlue", type_="is_supply", state=None)
                 B_locs = self.world.get_all_object_locs(obj=blue_delivery)
@@ -459,7 +458,7 @@ class OvercookedEnvironment(gym.Env):
     def get_lower_bound_for_subtask_given_objs(
             self, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
         """Return the lower bound distance (shortest path) under this subtask between objects."""
-        assert len(subtask_agent_names) <= 4, 'passed in {} agents but can only do 1 or 2'.format(len(agents))
+        # assert len(subtask_agent_names) <= 4, 'passed in {} agents but can only do 1 or 2'.format(len(agents))
 
         # Calculate extra holding penalty if the object is irrelevant.
         holding_penalty = 0.0
