@@ -20,7 +20,6 @@ def interact(agent, world):
     if isinstance(gs, Floor): #and gs.holding is None:
         agent.move_to(gs.location)
 
-
     # if holding something
     elif agent.holding is not None:
         # if delivery in front --> deliver
@@ -33,16 +32,14 @@ def interact(agent, world):
                     world.remove(already_del)
                 gs.acquire(obj)
                 agent.release()
+                # returns number of corresponding team to increase their score
                 if isinstance(gs, DeliveryBlue):
-                    print("Ready to delivery to blue team")
                     return 1
                 elif isinstance(gs, DeliveryRed):
                     return 2
-            # returns number of corresponding team to increase their score
-            # return obj.last_held
 
-        
-        # if trashcan in front --> delete object
+
+        # if trashcan in front --> delete object from world
         elif isinstance(gs, Trashcan):
             obj = agent.holding
             world.remove(obj)

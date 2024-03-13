@@ -289,6 +289,11 @@ class World:
             return objs[0]
         else:
             return None
+        
+    # returns all objects at a location, regardless if they're held or not
+    def get_objects_at(self, location):
+        objs = list(filter(lambda obj: obj.location == location and isinstance(obj, Object)))
+        return objs
 
     def get_gridsquare_at(self, location):
         gss = list(filter(lambda o: o.location == location and\

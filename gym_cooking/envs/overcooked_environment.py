@@ -510,6 +510,8 @@ class OvercookedEnvironment(gym.Env):
             # Revert back because agent collided.
             agent2_next_loc = agent2_loc
 
+        
+
         # Inter-agent collision.
         if agent1_next_loc == agent2_next_loc:
             if agent1_next_loc == agent1_loc and agent1_action != (0, 0):

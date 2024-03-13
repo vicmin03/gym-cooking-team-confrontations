@@ -102,10 +102,9 @@ class BayesianDelegator(Delegator):
         return distance < env.world.perimeter
 
     def get_lower_bound_for_subtask_alloc(self, obs, subtask, subtask_agent_names):
-        print("GETTING LOWER BOUND", subtask, subtask_agent_names)
         """Return the value lower bound for a subtask allocation
         (subtask x subtask_agent_names)."""
-        print("HI I am agent ", self.agent_name, "on team", self.team)
+        print("HI I am agent ", self.agent_name, "on team", self.team, "doing subtask", subtask)
         if subtask is None:
             return 0
         _ = self.planner.get_next_action(
@@ -186,7 +185,6 @@ class BayesianDelegator(Delegator):
             # Skip over myself.
             if other_agent_name != self.agent_name:
                 team = obs.get_agent_team(other_agent_name)
-                print("The other agent is:", other_agent_name, "from team ", team)
                 # Get most likely subtask and subtask agents for other agent
                 # based on my beliefs.
                 subtask, subtask_agent_names = self.select_subtask(

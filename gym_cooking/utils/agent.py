@@ -164,8 +164,10 @@ class RealAgent:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
             # if just finished delivering a recipe, re-adds subtasks
-            # if isinstance(self.subtask, recipe_utils.Deliver):
-            #     self.setup_subtasks()
+            if isinstance(self.subtask, recipe_utils.Deliver):
+                print("Just finished", self.subtask, "so going to refresh tasks")
+                self.reset_subtasks()
+                self.incomplete_subtasks = self.get_subtasks(world)
         print('{} incomplete subtasks:'.format(
             (self.name, self.color)),
             ', '.join(str(t) for t in self.incomplete_subtasks))
@@ -312,14 +314,27 @@ class RealAgent:
             #     set(env.world.get_all_object_locs(obj=self.subtask_action_object)),
             #     w.get_object_locs(obj=self.goal_obj, is_held=False)))))
 
-
-        # Otherwise, for other subtasks, check based on # of objects.
+        # Otherwise, for other subtasks, check based on # of objects attributed to your team
         else:
             # Current count of desired objects.
+            # objects = list(map(lambda a: env.world.get_object_at(a, None, find_held_objects = True), env.world.get_all_object_locs(obj=self.goal_obj)))
+            # if len(objects) > 0:
+            #     print("OBJECTS ", self.goal_obj, "are last held by", objects[0].last_held, "which is cool cos I'm team", self.team) 
+            #     team_objects = list(filter(lambda b: b.last_held == self.team, objects))
+            #     self.cur_obj_count = len(team_objects)
+            # else:
+            #     self.cur_obj_count = 0
+            # desired_objs = list(map(lambda a: env.world.get_object_at(a, None, find_held_objects = False), env.world.get_all_object_locs(obj=self.goal_obj))) + list(map(lambda a: env.world.get_object_at(a, None, find_held_objects = True), env.world.get_all_object_locs(obj=self.goal_obj)))
+            # team_objects = filter(lambda b: b is not None and b.last_held == self.team, desired_objs)
             self.cur_obj_count = len(env.world.get_all_object_locs(obj=self.goal_obj))
+
+
+            # self.cur_obj_count = len(list(team_objects))
+            print("Count of ", self.goal_obj, "is ", self.cur_obj_count)
+
             # Goal state is reached when the number of desired objects has increased.
             self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
-
+            # self.is_subtask_complete = lambda w: len(list(filter(lambda b: b is not None and b.last_held == self.team, map(lambda a: w.get_objects_at(a)[0], env.world.get_all_object_locs(obj=self.goal_obj))))) > self.cur_obj_count
 
 class SimAgent:
     """Simulation agent used in the environment object."""
