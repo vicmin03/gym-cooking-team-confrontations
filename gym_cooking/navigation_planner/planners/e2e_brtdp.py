@@ -360,36 +360,50 @@ class E2E_BRTDP:
 
 
         # for steal subtask, condition is met if object is taken (number of objects last_held by other team -1s/ goal object last_held is this agent's team)
-        # elif isinstance(subtask, Steal):
-        #     print("count of objects last held by the other team")
-        #     self.other_team_count = len(list(filter(lambda a: a.last_held  , map(lambda x: env.world.get_gridsquare_at(x), env.world.get_all_object_locs(self.goal_obj)))))
-            # self.team_1_count = len(env.world.get_all_team_objects(1))
-            # self.team_2_count = len(env.world.get_all_team_objects(2))
-                # self.team_count_changed = lambda x: int(x) < self.team_1_count
-                # self.is_subtask_complete = lambda w: 
+        elif isinstance(subtask, Steal):
+            # all dishes - excluding those that have already been delivered
+            # dishes = (map(lambda x: env.world.get_objects_at(x), 
+            #                   filter(lambda a: not isinstance(env.world.get_gridsquare_at(a), Delivery), env.world.get_all_object_locs(self.goal_obj))))
+            
+            dishes = map(lambda d: env.world.get_object_at(d, None, find_held_objects = False), env.world.get_object_locs(obj=self.goal_obj, is_held=False))
+
+            print("But my team is", team)
+            self.cur_obj_count = len(list(filter(lambda a: (a.last_held != team), dishes)))
+            
+            self.is_goal_state = lambda h: self.has_less_obj(
+                    len(list(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj))))
+
+            self.has_less_obj = lambda x: int(x) < self.cur_obj_count
+            # if self.removed_object is not None and self.removed_object == self.goal_obj:
+            #     self.is_subtask_complete = lambda w: self.has_less_obj(
+            #             len(w.get_all_object_locs(self.goal_obj)) + 1)
+            # else:
+            self.is_subtask_complete = lambda w: self.has_less_obj(
+                    len(list(filter(lambda a: (a.last_held != team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), w.get_object_locs(obj=self.goal_obj, is_held=False))))))
+
+            
             
         # for hoard subtask, condition is met once a single object has been moved to its goal location
             # goal complete if count of ingredients + 1 and it is placed on a counter
         elif isinstance(subtask, Hoard):
             # gets number of ingredients currently in world (not including multiples stocked at spawn)
             # self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
-            self.cur_obj_count = len(set(env.world.get_all_object_locs(self.subtask_action_obj)))
+            self.cur_obj_count = len(set(env.world.get_all_object_locs(self.start_obj)))
 
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
 
-            self.is_goal_state = lambda h: self.has_more_obj(
-                    len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
-                    self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))
+            # self.is_goal_state = lambda h: self.has_more_obj(
+            #         len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+            #         self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))
 
-            if self.removed_object is not None and self.removed_object == self.goal_obj:
-                self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
-                        w.get_object_locs(self.goal_obj, is_held=False)))) + 1)
-            else:
-                self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
-                        w.get_object_locs(obj=self.goal_obj, is_held=False)))))
-                
+            self.is_goal_state = lambda h: self.has_more_obj(
+                len(set(self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False))))
+
+            # self.is_subtask_complete = lambda w: self.has_more_obj(
+            #         len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.start_obj)),
+            #         w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+
+            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(obj=self.goal_obj, is_held=False))))
 
             # self.is_goal_state = lambda h: self.has_more_obj(
             #     len(set(self.repr_to_env_dict[h].world.get_object_locs(self.start_obj, is_held=False))))
@@ -398,7 +412,9 @@ class E2E_BRTDP:
 
         else:
             # Get current count of desired objects.
+            
             self.cur_obj_count = len(env.world.get_all_object_locs(self.goal_obj))
+            print("Hey I'm trying to merge to get", self.goal_obj, "and there's currently", self.cur_obj_count)
             # Goal state is reached when the number of desired objects has increased.
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
             self.is_goal_state = lambda h: self.has_more_obj(
@@ -647,6 +663,9 @@ class E2E_BRTDP:
             print('already at goal state, self.cur_obj_count:', self.cur_obj_count)
             return None
         else:
+            if isinstance(subtask, recipe.Hoard):
+                cur_objs = len(set(env.world.get_object_locs(obj=self.goal_obj, is_held=False)))
+                print("Not done with hoard cos only", cur_objs, "damn tomatoes on counters right now")
             actions = self.get_actions(state_repr=cur_state.get_repr())
             qvals = [self.Q(state=cur_state, action=a, value_f=self.v_l)
                     for a in actions]

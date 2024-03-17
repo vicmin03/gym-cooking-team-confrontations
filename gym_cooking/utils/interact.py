@@ -32,6 +32,7 @@ def interact(agent, world):
                     world.remove(already_del)
                 gs.acquire(obj)
                 agent.release()
+                # world.remove(obj)
                 # returns number of corresponding team to increase their score
                 if isinstance(gs, DeliveryBlue):
                     return 1

@@ -415,7 +415,6 @@ class BayesianDelegator(Delegator):
         if max_subtask_alloc is not None:
             for t in max_subtask_alloc:
                 if agent_name in t.subtask_agent_names:
-                    # print("Selected the subtask: ", t.subtask, "with object", get_subtask_obj(subtask=t.subtask))
                     return t.subtask, t.subtask_agent_names
         return None, agent_name
 

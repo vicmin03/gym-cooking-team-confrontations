@@ -108,6 +108,8 @@ class World:
                     B_loc=B_loc)
             if bound < lower_bound:
                 lower_bound = bound
+
+        # print("Yo I'm trying to ", subtask, "By going from", A_locs, "to", B_locs, "with a lower bound of", lower_bound)
         return lower_bound
 
     @lru_cache(maxsize=40000)
@@ -292,7 +294,8 @@ class World:
         
     # returns all objects at a location, regardless if they're held or not
     def get_objects_at(self, location):
-        objs = list(filter(lambda obj: obj.location == location and isinstance(obj, Object)))
+        all_objs = self.get_object_list()
+        objs = list(filter(lambda obj: obj.location == location and isinstance(obj, Object), all_objs))
         return objs
 
     def get_gridsquare_at(self, location):

@@ -148,7 +148,7 @@ def get_obj(obj_string, type_, state, location=(None, None)):
             raise NotImplementedError("Type {} is not recognized".format(type_))
 
 # get the counter location needed to complete subtask
-def get_subtask_action_obj(subtask, team=1):
+def get_subtask_action_obj(subtask, team):
     if isinstance(subtask, recipe.Get):
         obj = get_obj(obj_string=subtask.args[0], type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Hoard):
@@ -164,7 +164,7 @@ def get_subtask_action_obj(subtask, team=1):
     elif isinstance(subtask, recipe.Trash):
         obj = get_obj(obj_string="Trashcan", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Steal):
-        obj = get_obj(obj_string="Plate", type_="is_supply", state=None)
+        obj = get_obj(obj_string="Counter", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Merge):
         obj = None
     elif subtask is None:
