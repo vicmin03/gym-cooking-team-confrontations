@@ -111,11 +111,11 @@ class RealAgent:
                     self.incomplete_subtasks.append(recipe_utils.Hoard(self.new_subtask.args[0]))
 
         # if holding something deliverable, deliver it to free space for other subtasks
-        if not isinstance(self.new_subtask, recipe_utils.Deliver):
-            if self.holding is not None and self.holding.is_deliverable():
-                print(self.recipes[0].get_full_dish())
-                self.new_subtask = recipe_utils.Deliver(self.recipes[0].get_full_dish())
-                print(self.new_subtask)
+        # if not isinstance(self.new_subtask, recipe_utils.Deliver):
+        #     if self.holding is not None and self.holding.is_deliverable():
+        #         print(self.recipes[0].get_full_dish())
+        #         self.new_subtask = recipe_utils.Deliver(self.recipes[0].get_full_dish())
+        #         print(self.new_subtask)
             
         self.plan(copy.copy(obs))
         return self.action
@@ -287,11 +287,11 @@ class RealAgent:
             
         # For Trash subtask, remove object from world so lower number of goal objects
         elif isinstance(self.new_subtask, Trash):
-            print("Goal obj to trash: ", self.goal_obj)
+
             # gets count of all goal objects that haven't already been delivered
             self.cur_obj_count = len(list(env.world.get_all_object_locs(self.goal_obj)))
                 # but can't trash delivered objects - remove delivered objects?
-            print("count of relevant dishes", self.cur_obj_count)
+
             self.has_less_obj = lambda x: int(x) < self.cur_obj_count
             self.is_subtask_complete = lambda w: self.has_less_obj(
                     len(w.get_all_object_locs(self.goal_obj)))

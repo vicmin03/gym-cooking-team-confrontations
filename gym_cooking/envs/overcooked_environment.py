@@ -177,29 +177,6 @@ class OvercookedEnvironment(gym.Env):
                             id_color=COLORS[len(self.sim_agents)],
                             location=(int(loc[0]), int(loc[1])))
                         self.sim_agents.append(sim_agent)
-
-        # TO TEST: Add a merged dish belonging to other team to test steal action
-        tomato = Object(
-            location=(0, 3),
-            contents=RepToClass['t']())
-        plate = Object(
-            location=(0, 3),
-            contents=RepToClass['p']())
-        tomato.last_held = 2
-        
-        counter = self.world.get_gridsquare_at((0, 3))
-        counter.acquire(tomato)
-        self.world.insert(tomato)
-        tomato.chop()
-        tomato.merge(plate)
-        # self.world.insert(plate)
-
-        # self.world.remove(tomato)
-        # self.world.remove(plate)
-        dish = self.world.get_object_at((0, 3), None, False)
-
-        self.world.insert(dish)
-
         
         self.distances = {}
         self.world.width = x+1
@@ -459,25 +436,25 @@ class OvercookedEnvironment(gym.Env):
 
         # for Merge operator on Trash subtasks, we look at trashcan spaces and put whatever the agent is holding there
         elif isinstance(subtask, recipe.Trash):
+            # locations of trashcans
+            B_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+
+            # locations of objects to trash
             A_locs = self.world.get_object_locs(
                     obj=start_obj, is_held=False) + list(
                             map(lambda a: a.location, list(
                                 filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
-             
-            # locations of trashcans
-            B_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
 
+            A_locs = list(filter(lambda a: a not in B_locs, A_locs)) 
+            
         # for Merge operator on Steal subtasks, we look for dishes last held by the other team and put them closer to our team's agents
         elif isinstance(subtask, recipe.Steal):
             
             # need to get dish objects to check who last held them
             dishes = map(lambda d: self.world.get_object_at(d, None, find_held_objects = False), self.world.get_object_locs(obj=goal_obj, is_held=False))
-            # dishes = map(lambda d: self.world.get_object_at(d), self.world.get_object_locs(obj=start_obj, is_held=False))
             # filter to get locations of dishes that were last held by the other team
 
             A_locs = list(map(lambda l: l.get_location(), list(filter(lambda a: (a.last_held != agent.team), dishes))))
-            # print("Locations of dishes held by last team that isn't team ", agent.team , ": ", A_locs)
-            # A_locs = list(filter(lambda a: a.last_held != agent.team, map(lambda b: self.world.get_gridsquare_at(b), self.world.get_object_locs(obj=start_obj, is_held=False))))
 
             # locations near this team's agents
             agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
@@ -524,8 +501,6 @@ class OvercookedEnvironment(gym.Env):
                 goal_obj=goal_obj,
                 subtask_action_obj=subtask_action_obj)
         
-        # print("Hey subtask action obj is,", subtask_action_obj, "so I'm trying to", subtask, " going from", A_locs, "to ", B_locs)
-
         # Add together distance and holding_penalty.
         return self.world.get_lower_bound_between(
                 subtask=subtask,

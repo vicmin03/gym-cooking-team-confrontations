@@ -2,8 +2,8 @@ stock 5
 
 -pt/-t-
 -     -
-£     #
--     $
+$     £
+-     #
 -/---/-
 
 SimpleTomato

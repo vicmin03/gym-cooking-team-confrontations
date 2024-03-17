@@ -39,13 +39,11 @@ def interact(agent, world):
                 elif isinstance(gs, DeliveryRed):
                     return 2
 
-
         # if trashcan in front --> delete object from world
         elif isinstance(gs, Trashcan):
             obj = agent.holding
             world.remove(obj)
             agent.release()
-
 
         # if occupied gridsquare in front --> try merging
         elif world.is_occupied(gs.location):
