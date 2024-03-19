@@ -188,7 +188,7 @@ class Hoard(Action):
         Action.__init__(self, 'Hoard', pre, post_add)
 
 '''
-Steal(X) = Take a fully/partially merged dish from the other team
+Steal(X) = Take a fully merged dish from the other team
 Pre: SomeState(obj)
 Post: SomeState(X)
 '''

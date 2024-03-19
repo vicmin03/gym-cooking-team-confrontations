@@ -11,7 +11,7 @@ from navigation_planner.planners.e2e_brtdp import E2E_BRTDP
 import navigation_planner.utils as nav_utils
 
 # Other core modules
-from utils.core import Counter, Cutboard
+from utils.core import Counter, Cutboard, Food
 from utils.utils import agent_settings
 
 import numpy as np
@@ -103,12 +103,13 @@ class RealAgent:
             agent_name=self.name)
 
         # !!! if new_subtask is hoard subtask, need to get object first 
-        if isinstance(self.new_subtask, recipe_utils.Hoard):
-            if self.holding is None or not self.holding.is_chopped():
-                self.new_subtask = recipe_utils.Chop(self.new_subtask.args[0])
-                print("Want to do hoard so first need to ", self.new_subtask)     
-                if recipe_utils.Hoard(self.new_subtask.args[0]) not in self.incomplete_subtasks:
-                    self.incomplete_subtasks.append(recipe_utils.Hoard(self.new_subtask.args[0]))
+        # if isinstance(self.new_subtask, recipe_utils.Hoard):
+        #     print(self.holding, "Is chopped: ", self.holding.is_chopped())
+        #     if self.holding is None or not self.holding.is_chopped():
+        #         self.new_subtask = recipe_utils.Chop(self.new_subtask.args[0])
+        #         print("Want to do hoard so first need to ", self.new_subtask)     
+        #         if recipe_utils.Hoard(self.new_subtask.args[0]) not in self.incomplete_subtasks:
+        #             self.incomplete_subtasks.append(recipe_utils.Hoard(self.new_subtask.args[0]))
 
         # if holding something deliverable, deliver it to free space for other subtasks
         # if not isinstance(self.new_subtask, recipe_utils.Deliver):
@@ -297,12 +298,19 @@ class RealAgent:
                     len(w.get_all_object_locs(self.goal_obj)))
 
         elif isinstance(self.new_subtask, Hoard):
+            
             # gets number of ingredients currently in world (only those on counters, not including multiples stocked at spawn)
-            self.cur_obj_count = len(set(env.world.get_object_locs(self.start_obj, is_held=False)))
+            self.cur_obj_count = len(set(env.world.get_object_locs(self.goal_obj, is_held=False)))
+            print("Current count:", self.cur_obj_count)
 
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
             
-            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.start_obj, is_held=False))))
+
+            # self.is_subtask_complete = lambda w: self.has_more_obj(
+            #     len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)),
+            #     w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+
+            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.goal_obj, is_held=False))))
 
 
         elif isinstance(self.new_subtask, Steal):

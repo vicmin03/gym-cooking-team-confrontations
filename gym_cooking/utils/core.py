@@ -90,12 +90,26 @@ class SpawnCounter(Counter):
     def __init__(self, location):
         GridSquare.__init__(self,"Counter", location)
         self.rep = Rep.COUNTER
-        self.holding = []
+        self.holding = None
+        self.stock = 0
 
     def __eq__(self, other):
         return GridSquare.__eq__(self, other)
     def __hash__(self):
         return GridSquare.__hash__(self)
+    
+    def acquire(self, obj):
+        obj.location = self.location
+        self.holding = obj 
+        self.stock += 1   
+
+    def release(self):
+        temp = self.holding
+        if self.stock == 1:
+            self.holding = None
+        self.stock -= 1
+        return temp
+
 
 class AgentCounter(Counter):
     def __init__(self, location):
@@ -262,6 +276,7 @@ def mergeable(obj1, obj2):
     # query whether two objects are mergeable
     contents = obj1.contents + obj2.contents
     # check that there is at most one plate
+    # and check t
     try:
         contents.remove(Plate())
     except:

@@ -393,6 +393,8 @@ class OvercookedEnvironment(gym.Env):
                                 filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
             A_locs = list(filter(lambda a: a not in B_locs, A_locs))
 
+            print("Want to put ingredients", start_obj, "at A_locs", A_locs, "to", B_locs)
+
         # For Merge operator on Merge subtasks, we look at objects that can be
         # combined together. These objects are all ingredient objects (e.g. Tomato, Lettuce).
         elif isinstance(subtask, recipe.Merge):
@@ -408,31 +410,44 @@ class OvercookedEnvironment(gym.Env):
         # for Merge operator on Hoard subtasks, we look at empty counters that are near to agents on team
         elif isinstance(subtask, recipe.Hoard):
             # Ingredients to hoard
-            A_locs = list(map(lambda a: a.location, list(
-                    filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+            # A_locs = list(map(lambda a: a.location, list(
+            #         filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
             
-                        # if not holding appropriate ingredient, go fetch it
-            if len(A_locs) == 0:
-                A_locs = set(self.world.get_object_locs(obj=start_obj, is_held=False))
+            #         # if not holding appropriate ingredient, go fetch it
+            # if len(A_locs) == 0:
+            #     A_locs = set(self.world.get_object_locs(obj=start_obj, is_held=False))
+            if agent.team == 1:
+                agents = self.team1_agents
+            elif agent.team == 2:
+                agents = self.team2_agents
+
+            A_locs = self.world.get_object_locs(
+                    obj=start_obj, is_held=False) + list(
+                            map(lambda a: a.location, list(
+                                filter(lambda a: a.name in agents and a.holding == start_obj, self.sim_agents))))
+            A_locs = set(A_locs)
             
             # Where to put hoarded ingredients (near team agents)
             
-            # finds location of other agents on team
-            agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))         
+            # finds location of other agents on this agent's team
+            agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))     
 
             # find location of empty counters near team agents
-            counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
-            for team_agent in agent_locs:
-                nearby_locs = (list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs)))
+            # counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+            # nearby_locs = []
+            # for team_agent in agent_locs:
+            #     nearby_locs += list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs))
             
-            B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
+            # B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
             
-            if len(B_locs) == 0:   # counter_locs gets changed by the filter though!!!!
-                B_locs = counter_locs 
+            # if len(B_locs) == 0:   
+            #     B_locs = agent_locs
+
+            # print("Here's nearby counters: ", B_locs)
 
             B_locs = [(3, 4)]
 
-            print("gonna hoard these dishes at", A_locs, "to ", B_locs)
+
 
         # for Merge operator on Trash subtasks, we look at trashcan spaces and put whatever the agent is holding there
         elif isinstance(subtask, recipe.Trash):

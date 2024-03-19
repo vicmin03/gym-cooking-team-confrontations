@@ -152,7 +152,6 @@ def get_subtask_action_obj(subtask, team):
     if isinstance(subtask, recipe.Get):
         obj = get_obj(obj_string=subtask.args[0], type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Hoard):
-        # obj = get_obj(obj_string=subtask.args[0], type_="is_supply", state=None)
         obj = get_obj(obj_string="Counter", type_="is_supply", state=None)
     elif isinstance(subtask, recipe.Chop): 
         obj = get_obj(obj_string="Cutboard", type_="is_supply", state=None)
@@ -176,7 +175,6 @@ def get_subtask_action_obj(subtask, team):
 # get food object involved in subtask
 def get_subtask_obj(subtask):
     if isinstance(subtask, recipe.Get):
-        print(subtask.args)
         start_obj = get_obj(obj_string=subtask.args[0],
             type_="is_object", state=FoodState.FRESH)
         goal_obj = get_obj(obj_string=subtask.args[0],

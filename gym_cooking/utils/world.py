@@ -100,6 +100,7 @@ class World:
     def get_lower_bound_between(self, subtask, agent_locs, A_locs, B_locs):
         """Return distance lower bound between subtask-relevant locations."""
         lower_bound = self.perimeter + 1
+        target = None
         for A_loc, B_loc in product(A_locs, B_locs):
             bound = self.get_lower_bound_between_helper(
                     subtask=subtask,
@@ -108,8 +109,8 @@ class World:
                     B_loc=B_loc)
             if bound < lower_bound:
                 lower_bound = bound
-
-        # print("Yo I'm trying to ", subtask, "By going from", A_locs, "to", B_locs, "with a lower bound of", lower_bound)
+                target = (A_loc, B_loc)
+        
         return lower_bound
 
     @lru_cache(maxsize=40000)
