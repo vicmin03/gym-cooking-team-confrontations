@@ -51,6 +51,9 @@ def parse_arguments():
     parser.add_argument("--model7", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, or greedy)")
     parser.add_argument("--model8", type=str, default=None, help="Model type for agent 4 (bd, up, dc, fb, or greedy)")
 
+    # whether each team will have a hoarder agent (1st agent on each team)
+    parser.add_argument("--hoarder", type=bool, default=False, help="Whether there is an agent performing hoarding for this team")
+
     return parser.parse_args()
 
 
@@ -89,11 +92,15 @@ def initialize_agents(arglist):
             elif phase == 4:
                 if len(real_agents) < arglist.num_agents:
                     loc = line.split(' ')
+                    if arglist.hoarder and len(real_agents) < 3:
+                        hoarder = True
+                    else:
+                        hoarder = False
                     real_agent = RealAgent(
                             arglist=arglist,
                             name='agent-'+str(len(real_agents)+1),
                             id_color=TEAM_COLORS[len(real_agents) % 2][int(len(real_agents)/2)],
-                            recipes=recipes)
+                            recipes=recipes, hoarder=hoarder)
                     real_agent.set_team((len(real_agents) % 2) + 1)
                     real_agents.append(real_agent)
 

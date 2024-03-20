@@ -11,7 +11,7 @@ from navigation_planner.planners.e2e_brtdp import E2E_BRTDP
 import navigation_planner.utils as nav_utils
 
 # Other core modules
-from utils.core import Counter, Cutboard, Food
+from utils.core import Counter, Cutboard, Food, FoodState
 from utils.utils import agent_settings
 
 import numpy as np
@@ -29,14 +29,17 @@ TEAM_COLORS = [['blue-team-blue', 'magenta-team-blue', 'yellow-team-blue', 'gree
 class RealAgent:
     """Real Agent object that performs task inference and plans."""
 
-    def __init__(self, arglist, name, id_color, recipes):
+    def __init__(self, arglist, name, id_color, recipes, hoarder):
         self.arglist = arglist
         self.name = name
         self.color = id_color
         self.recipes = recipes
+        
         self.team = 1  # what team agent is on - cooperates with same team, opponents with diff. teams - default team is 1 (blue)
 
         # Bayesian Delegation.
+        self.hoarder = hoarder   # Boolean - true if this agent's role is to hoard ingredients
+
         self.reset_subtasks()
         self.new_subtask = None
         self.new_subtask_agent_names = []
@@ -63,7 +66,7 @@ class RealAgent:
         return (self.name[-1], self.color)
 
     def __copy__(self):
-        a = Agent(arglist=self.arglist,
+        a = RealAgent(arglist=self.arglist,
                 name=self.name,
                 id_color=self.color,
                 recipes=self.recipes)
@@ -110,13 +113,6 @@ class RealAgent:
         #         print("Want to do hoard so first need to ", self.new_subtask)     
         #         if recipe_utils.Hoard(self.new_subtask.args[0]) not in self.incomplete_subtasks:
         #             self.incomplete_subtasks.append(recipe_utils.Hoard(self.new_subtask.args[0]))
-
-        # if holding something deliverable, deliver it to free space for other subtasks
-        # if not isinstance(self.new_subtask, recipe_utils.Deliver):
-        #     if self.holding is not None and self.holding.is_deliverable():
-        #         print(self.recipes[0].get_full_dish())
-        #         self.new_subtask = recipe_utils.Deliver(self.recipes[0].get_full_dish())
-        #         print(self.new_subtask)
             
         self.plan(copy.copy(obs))
         return self.action
@@ -142,7 +138,17 @@ class RealAgent:
 
     def setup_subtasks(self, env):
         """Initializing subtasks and subtask allocator, Bayesian Delegation."""
-        self.incomplete_subtasks = self.get_subtasks(world=env.world)
+        self.incomplete_subtasks = []
+
+        self.ingredients = self.recipes[0].get_ingredients()
+        self.ingredients.append("Plate")
+        if self.hoarder:
+            to_hoard = self.recipes[0].get_ingredients()
+            for ingredient in to_hoard:
+                if len(env.world.get_object_locs(obj=ingredient, is_held=False)) == 0:
+                    self.incomplete_subtasks.append(recipe_utils.Hoard(ingredient.get_name()))
+        
+        self.incomplete_subtasks += self.get_subtasks(world=env.world)
         self.delegator = BayesianDelegator(
                 agent_name=self.name,
                 all_agent_names=env.get_agent_names(),
@@ -174,11 +180,21 @@ class RealAgent:
             if self.subtask in self.incomplete_subtasks:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
-            # if just finished delivering a recipe, re-adds subtasks
-            # if isinstance(self.subtask, recipe_utils.Deliver):
-            #     print("Just finished", self.subtask, "so going to refresh tasks")
-            #     self.reset_subtasks()
-            #     self.incomplete_subtasks = self.get_subtasks(world)
+            # if no more subtasks and there is stock left in the world, re-add chop-merge-deliver subtasks
+            if len(self.incomplete_subtasks) == 1:
+                print("Gonna reset subtasks now")
+                keep_cooking = True
+                for ingredient in self.ingredients:
+                    if ingredient == "Plate":
+                        obj = nav_utils.get_obj(obj_string="Plate", type_="is_object", state=None)
+                    else:
+                        obj = nav_utils.get_obj(obj_string=ingredient, type_="is_object", state=FoodState.FRESH)
+                    print("Stock of ingredient", ingredient, "is", len(world.get_object_locs(obj=obj, is_held=False)))
+                    if len(world.get_object_locs(obj=obj, is_held=False)) == 0:
+                        keep_cooking = False
+                if keep_cooking:
+                    self.reset_subtasks()
+                    self.incomplete_subtasks = self.get_subtasks(world)
         print('{} incomplete subtasks:'.format(
             (self.name, self.color)),
             ', '.join(str(t) for t in self.incomplete_subtasks))

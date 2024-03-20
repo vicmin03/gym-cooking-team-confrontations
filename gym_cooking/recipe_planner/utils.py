@@ -189,8 +189,8 @@ class Hoard(Action):
 
 '''
 Steal(X) = Take a fully merged dish from the other team
-Pre: SomeState(obj)
-Post: SomeState(X)
+Pre: Merged(obj)
+Post: Merged(X)
 '''
 class Steal(Action):
     def __init__(self, obj, pre=None, post_add=None):

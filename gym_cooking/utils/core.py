@@ -275,8 +275,12 @@ class Object:
 def mergeable(obj1, obj2):
     # query whether two objects are mergeable
     contents = obj1.contents + obj2.contents
+
+    # can't merge two of the same object
+    if obj1 == obj2:
+        return False
+
     # check that there is at most one plate
-    # and check t
     try:
         contents.remove(Plate())
     except:

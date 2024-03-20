@@ -27,9 +27,9 @@ def interact(agent, world):
             # removes any dishes already there
             obj = agent.holding
             if obj.is_deliverable():
-                already_del = world.get_object_at(gs.location, None, find_held_objects=False)
-                if already_del is not None:
-                    world.remove(already_del)
+                # already_del = world.get_object_at(gs.location, None, find_held_objects=False)
+                # if already_del is not None:
+                #     world.remove(already_del)
                 gs.acquire(obj)
                 agent.release()
                 # world.remove(obj)

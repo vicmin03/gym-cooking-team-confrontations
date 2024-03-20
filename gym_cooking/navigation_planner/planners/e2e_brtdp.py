@@ -380,12 +380,9 @@ class E2E_BRTDP:
         # for hoard subtask, condition is met once a single object has been moved to its goal location
             # goal complete if count of ingredients + 1 and it is placed on a counter
         elif isinstance(subtask, Hoard):
-            # gets number of chopped ??? ingredients currently on counters
-            print(self.goal_obj, "to be put on ", self.subtask_action_obj)
+            # gets number of ingredients currently on counters
             self.cur_obj_count = len(set(env.world.get_object_locs(self.goal_obj, is_held=False)))
-            print("Currently:", self.cur_obj_count)
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-
             
             self.is_goal_state = lambda h: self.has_more_obj(
                 len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), set(
@@ -656,13 +653,11 @@ class E2E_BRTDP:
             print('exploring, B: {}, diff: {}'.format(B, diff))
             self.main()
 
-        # Determine best action after BRTDP.
+    # Determine best action after BRTDP.
         if self.is_goal_state(cur_state.get_repr()):
+            print('already at goal state, self.cur_obj_count:', self.cur_obj_count)
             return None
         else:
-            if isinstance(subtask, recipe.Hoard):
-                cur_objs = len(set(env.world.get_object_locs(obj=self.goal_obj, is_held=False)))
-                print("Not done with hoard cos only", cur_objs, "damn tomatoes on counters right now")
             actions = self.get_actions(state_repr=cur_state.get_repr())
             qvals = [self.Q(state=cur_state, action=a, value_f=self.v_l)
                     for a in actions]
@@ -672,7 +667,7 @@ class E2E_BRTDP:
 
             action_index = argmin(np.array(qvals))
             a = actions[action_index]
-            
+
             print('chose action:', a)
             print('cost:', self.cost(cur_state, a))
             return a

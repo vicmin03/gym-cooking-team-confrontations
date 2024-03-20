@@ -8,7 +8,7 @@ import itertools
 import pickle
 import sys
 sys.path.append("../..")
-import recipe_planner
+# import recipe_planner
 
 
 recipes = [
@@ -35,10 +35,15 @@ model_key = {
     "_model1-dc_model2-dc": "D&C",
     "_model1-greedy_model2-greedy": "Greedy",
 }
+# maps = [
+#         "full-divider",
+#         "open-divider",
+#         "partial-divider"
+#         ]
 maps = [
-        "full-divider",
-        "open-divider",
-        "partial-divider"
+        "small-divider_tomato_teams",
+        "open-divider_tomato_teams",
+        "three-sections_salad_teams"
         ]
 seeds = range(1,10)
 agents = ['agent-1', 'agent-2', 'agent-3', 'agent-4']

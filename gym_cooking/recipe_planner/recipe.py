@@ -88,6 +88,10 @@ class Recipe:
     
     def get_full_dish(self):
         return self.full_plate_name
+    
+    def get_ingredients(self):
+        """Returns ingredients for recipe as Food objects"""
+        return self.contents_names
 
 
 class SimpleTomato(Recipe):
@@ -96,9 +100,10 @@ class SimpleTomato(Recipe):
         self.add_ingredient(Tomato(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
-        self.add_hoard_actions()
+        # self.add_hoard_actions()
         # self.add_trash_actions()
         # self.add_steal_actions()
+
 
 class SimpleLettuce(Recipe):
     def __init__(self):
@@ -106,9 +111,9 @@ class SimpleLettuce(Recipe):
         self.add_ingredient(Lettuce(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
-        self.add_hoard_actions()
+        # self.add_hoard_actions()
         self.add_trash_actions()
-        self.add_steal_actions()
+        # self.add_steal_actions()
 
 class Salad(Recipe):
     def __init__(self):
