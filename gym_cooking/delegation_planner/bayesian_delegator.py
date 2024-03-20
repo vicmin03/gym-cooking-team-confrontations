@@ -104,7 +104,7 @@ class BayesianDelegator(Delegator):
     def get_lower_bound_for_subtask_alloc(self, obs, subtask, subtask_agent_names):
         """Return the value lower bound for a subtask allocation
         (subtask x subtask_agent_names)."""
-        print("HI I am agent ", self.agent_name, "on team", self.team, "doing subtask", subtask)
+
         if subtask is None:
             return 0
         _ = self.planner.get_next_action(

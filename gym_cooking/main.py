@@ -145,11 +145,13 @@ def main_loop(arglist):
         # Saving info
         bag.add_status(cur_time=info['t'], real_agents=real_agents)
 
+    print("\n TERMINATED AFTER 100 STEPS: Team 1 score:", env.get_team1_score(), "Team 2 score: ", env.get_team2_score())
 
     # Saving final information before saving pkl file
     bag.set_collisions(collisions=env.collisions)
     bag.set_termination(termination_info=env.termination_info,
             successful=env.successful)
+
 
 if __name__ == '__main__':
     arglist = parse_arguments()

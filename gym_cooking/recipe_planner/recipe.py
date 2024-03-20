@@ -112,7 +112,7 @@ class SimpleLettuce(Recipe):
         self.add_goal()
         self.add_merge_actions()
         # self.add_hoard_actions()
-        self.add_trash_actions()
+        # self.add_trash_actions()
         # self.add_steal_actions()
 
 class Salad(Recipe):
@@ -122,9 +122,9 @@ class Salad(Recipe):
         self.add_ingredient(Lettuce(state_index=-1))
         self.add_goal()
         self.add_merge_actions()
-        self.add_hoard_actions()
-        self.add_trash_actions()
-        self.add_steal_actions()
+        # self.add_hoard_actions()
+        # self.add_trash_actions()
+        # self.add_steal_actions()
 
 class OnionSalad(Recipe):
     def __init__(self):
