@@ -19,6 +19,8 @@ import copy
 from termcolor import colored as color
 from collections import namedtuple
 
+from cooking_maddpg.maddpg_agent import MADDPGAgent
+
 AgentRepr = namedtuple("AgentRepr", "name location holding")
 
 # Colors for agents.
@@ -55,12 +57,16 @@ class RealAgent:
         else:
             self.priors = 'spatial'
 
+                
+        self.maddpg = MADDPGAgent(self.name, 64, 64,  
+                    5, 2, self.name[-1])
+
         # Navigation planner.
-        self.planner = E2E_BRTDP(
-                alpha=arglist.alpha,
-                tau=arglist.tau,
-                cap=arglist.cap,
-                main_cap=arglist.main_cap)
+        # self.planner = E2E_BRTDP(
+        #         alpha=arglist.alpha,
+        #         tau=arglist.tau,
+        #         cap=arglist.cap,
+        #         main_cap=arglist.main_cap)
 
     def __str__(self):
         return (self.name[-1], self.color)
@@ -92,34 +98,7 @@ class RealAgent:
 
     def select_action(self, obs):
         """Return best next action for this agent given observations."""
-        sim_agent = list(filter(lambda x: x.name == self.name, obs.sim_agents))[0]
-        self.location = sim_agent.location
-        self.holding = sim_agent.holding
-        self.action = sim_agent.action
-
-        if obs.t == 0:
-            self.setup_subtasks(env=obs)
-
-        # Select subtask based on Bayesian Delegation.
-        self.update_subtasks(env=obs)
-        self.new_subtask, self.new_subtask_agent_names = self.delegator.select_subtask(
-            agent_name=self.name)
-        
-        if self.new_subtask is None:
-            self.refresh_subtasks(obs.world)
-            print("Incomplete subtasks are:", self.incomplete_subtasks)
-            
-
-        # !!! if new_subtask is hoard subtask, need to get object first 
-        # if isinstance(self.new_subtask, recipe_utils.Hoard):
-        #     print(self.holding, "Is chopped: ", self.holding.is_chopped())
-        #     if self.holding is None or not self.holding.is_chopped():
-        #         self.new_subtask = recipe_utils.Chop(self.new_subtask.args[0])
-        #         print("Want to do hoard so first need to ", self.new_subtask)     
-        #         if recipe_utils.Hoard(self.new_subtask.args[0]) not in self.incomplete_subtasks:
-        #             self.incomplete_subtasks.append(recipe_utils.Hoard(self.new_subtask.args[0]))
-            
-        self.plan(copy.copy(obs))
+        self.action = self.maddpg.select_action(obs)
         return self.action
 
     def get_subtasks(self, world):
@@ -131,7 +110,7 @@ class RealAgent:
         
         # add subtasks for as many ingredients as there are available in the world
        
-        # all_subtasks += [subtask for path in subtasks for subtask in path]
+        all_subtasks += [subtask for path in subtasks for subtask in path]
         all_subtasks += self.recipes[0].get_con_actions()
 
         print("Getting subtasks agent can perform: ", all_subtasks)
@@ -154,12 +133,12 @@ class RealAgent:
                     self.incomplete_subtasks.append(recipe_utils.Hoard(ingredient.get_name()))
         
         self.incomplete_subtasks += self.get_subtasks(world=env.world)
-        self.delegator = BayesianDelegator(
-                agent_name=self.name,
-                all_agent_names=env.get_agent_names(),
-                model_type=self.model_type,
-                planner=self.planner,
-                none_action_prob=self.none_action_prob, team=self.team)
+        # self.delegator = BayesianDelegator(
+        #         agent_name=self.name,
+        #         all_agent_names=env.get_agent_names(),
+        #         model_type=self.model_type,
+        #         planner=self.planner,
+        #         none_action_prob=self.none_action_prob, team=self.team)
 
     def reset_subtasks(self):
         """Reset subtasks---relevant for Bayesian Delegation."""

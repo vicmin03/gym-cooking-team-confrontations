@@ -21,7 +21,7 @@ def parse_arguments():
     # Environment
     parser.add_argument("--level", type=str, required=True)
     parser.add_argument("--num-agents", type=int, required=True)
-    parser.add_argument("--max-num-timesteps", type=int, default=100, help="Max number of timesteps to run")
+    parser.add_argument("--max-num-timesteps", type=int, default=70, help="Max number of timesteps to run")
     parser.add_argument("--max-num-subtasks", type=int, default=14, help="Max number of subtasks for recipe")
     parser.add_argument("--seed", type=int, default=1, help="Fix pseudorandom seed")
     parser.add_argument("--with-image-obs", action="store_true", default=False, help="Return observations as images (instead of objects)")
@@ -136,11 +136,17 @@ def main_loop(arglist):
             action = agent.select_action(obs=obs)
             action_dict[agent.name] = action
 
-        obs, reward, done, info = env.step(action_dict=action_dict)
+        obs, reward1, reward2, done, info = env.step(action_dict=action_dict)
+
+        state = env.get_repr()
+        print("HERE: the state is ", state)
 
         # Agents
         for agent in real_agents:
             agent.refresh_subtasks(world=env.world)
+
+        state = env.get_repr()
+        print("HERE: the state is ", state)
 
         # Saving info
         bag.add_status(cur_time=info['t'], real_agents=real_agents)

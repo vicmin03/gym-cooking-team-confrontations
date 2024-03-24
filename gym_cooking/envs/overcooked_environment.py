@@ -26,6 +26,8 @@ from collections import namedtuple
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
+from gym.spaces import Box, Discrete, Dict, Tuple, MultiBinary, MultiDiscrete
+import torch as T
 
 
 CollisionRepr = namedtuple("CollisionRepr", "time agent_names agent_locations")
@@ -54,6 +56,15 @@ class OvercookedEnvironment(gym.Env):
         # names of agents on each team
         self.team1_agents = []
         self.team2_agents = []
+
+        # keep track of the dishes delivered for each team 
+        self.delivered1 = 0
+        self.delivered2 = 0
+
+        # all possible actions in this environment
+        # self.action_space = Discrete(5)
+        self.action_space = [(0, 1), (0, -1), (1, 0), (-1, 0), (0, 0)]
+
 
     def get_repr(self):
         return self.world.get_repr() + tuple([agent.get_repr() for agent in self.sim_agents])
@@ -183,6 +194,13 @@ class OvercookedEnvironment(gym.Env):
         self.world.height = y
         self.world.perimeter = 2*(self.world.width + self.world.height)
 
+        self.observation_space = Box(low=0, high=2, shape=(self.world.height, self.world.width, 10), dtype=np.int32)
+
+    # def create_spaces(self):
+    #     # observation space - locations of special gridsquares (blue, red, trash), objects and agents in the world
+    #     self.observation_space = spaces.Box(0, self.world.width), spaces.Box(0, self.world.height)
+        # # self.observation_space = 
+        # self.action_space = spaces.Discrete(5)
 
     def reset(self):
         self.world = World(arglist=self.arglist)
@@ -228,12 +246,55 @@ class OvercookedEnvironment(gym.Env):
     def close(self):
         return
 
+    def encode_obs(self, agents):
+        # Encode grid representation
+        # grid_tensor = T.tensor(np.array(self.world.width, self.world.height), dtype=T.float32).unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
+        
+        # Encode agent information
+        agent_locations = [agent.location for agent in self.sim_agents]
+        num_agents = len(self.sim_agents)
+        agent_info_tensor = T.zeros(1, 2 * num_agents)  #  each agent has (x, y) position
+        for i, location in enumerate(agent_locations):
+            agent_info_tensor[0, i * 2: (i + 1) * 2] = T.tensor(location, dtype=T.float32)
+        
+        # locations of objects
+        obj_locations = [obj.location for obj in self.world.get_object_list()]
+        num_objs = len(self.world.get_object_list())
+        obj_info_tensor = T.zeros(1, 2 * num_objs)  #  each object has (x, y) position
+        for i, location in enumerate(obj_locations):
+            obj_info_tensor[0, i * 2: (i + 1) * 2] = T.tensor(location, dtype=T.float32)
+
+        # one hot vector encoding of the type of each object
+        # Define object types and their corresponding indices
+        # object_types = [Floor, Counter, SpawnCounter, Trashcan, DeliveryBlue, DeliveryRed, Cutboard, Tomato, Lettuce, Onion, Plate]
+        # object_types = [Floor, Counter, SpawnCounter, Trashcan, DeliveryBlue, DeliveryRed, Cutboard, Object]
+        # num_object_types = len(object_types)
+
+        # obj_type_vectors = []
+        # for obj in self.world.get_object_list():
+        #     # obj_type = type(obj)
+        #     # # if isinstance()
+        #     object_type_index = object_types.index(type(obj))
+        #     obj_type_one_hot = T.zeros(num_object_types)
+        #     obj_type_one_hot[object_type_index] = 1
+        #     obj_type_vectors.append(obj_type_one_hot)
+        
+        # obj_type_tensor = T.from_numpy(np.array(obj_type_vectors))
+
+        # Concatenate tensors
+        # encoded_obs= T.cat((grid_tensor, agent_info_tensor, goal_info_tensor), dim=1)
+        encoded_obs= T.cat((agent_info_tensor, obj_info_tensor), dim=1)
+        
+        print(encoded_obs)
+        return encoded_obs
+
     def step(self, action_dict):
         # Track internal environment info.
         self.t += 1
         print("===============================")
         print("[environment.step] @ TIMESTEP {}".format(self.t))
         print("===============================")
+
 
         # Get actions.
         for sim_agent in self.sim_agents:
@@ -259,10 +320,13 @@ class OvercookedEnvironment(gym.Env):
             image_obs = self.game.get_image_obs()
 
         done = self.done()
+        # reward1, reward2 = self.reward()
         reward = self.reward()
+
         info = {"t": self.t, "obs": new_obs,
                 "image_obs": image_obs,
                 "done": done, "termination_info": self.termination_info}
+        # return new_obs, reward1, reward2, done, info
         return new_obs, reward, done, info
 
     def get_team1_score(self):
@@ -304,30 +368,49 @@ class OvercookedEnvironment(gym.Env):
         # self.successful = True
         # return True
 
+    def delivered(self):
+        for subtask in self.all_subtasks:
+        # Double check all goal_objs are at Delivery.
+            if isinstance(subtask, recipe.Deliver):
+                _, goal_obj = nav_utils.get_subtask_obj(subtask)
 
+                delivery_1 = list(filter(lambda o: o.name=='DeliveryBlue', self.world.get_object_list()))[0].location
+                delivery_2 = list(filter(lambda o: o.name=='DeliveryRed', self.world.get_object_list()))[0].location
+                goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
+                delivered_1 = len(list(filter(lambda a: a in delivery_1, goal_obj_locs)))
+                delivered_2 = len(list(filter(lambda a: a in delivery_2, goal_obj_locs)))
+
+        # returns whether there was a new delivery for each team in this timestep
+        return delivered_1 > self.delivered1, delivered_2 > self.delivered2
+            
     def reward(self):
-    # pass team in??????
-    # return two rewards (team1, team2)
-        # 1 if delivered, -1 to other team
-        # 0.2 if hoarded
-        # 0.8 if stole another team's dish, -0.8 if stolen from them
-        # -0.5 to both teams if trashed
-        # else 0
-
-        # if team1_delivered():
-        #     r1 = 1
-        #     r2 = -1
-        # elif team2_delivered():
-        #     r1 = -1
-        #     r2 = 1
-
-        # if something got trashed 
-            # r1 -= 0.5
-            # r2 -= 0.5 ??????/
+        return 1
         
-        # return r1, r2
+    # def reward(self):
+    #    # rewards for each team depending if something was delivered
+    #     r1, r2 = 0, 0
+    #     score1, score2 = self.delivered()
+    #     if score1:
+    #         r1 += 1
+    #         r2 += -1
+    #     elif score2:
+    #         r1 += -1
+    #         r2 += 1
 
-        return 1 if self.successful else 0
+    #     # 0.1 if hoarded one item
+    #     # 0.8 if stole another team's dish, -0.8 if stolen from them
+    #     # r1 += 0.8 if len(objects belonging to team1) + 1
+
+    #     # distance to goal location? B_loc????/
+    #         # call AB_locs for every agent and their subtask
+    #         # calculate distance between their current location + goal + are they holding goal obj?
+ 
+    #     # if something got trashed 
+    #         # r1 -= 0.5
+    #         # r2 -= 0.5 ??????
+        
+    #     # return two rewards (team1, team2)
+    #     return r1, r2
 
     def print_agents(self):
         for sim_agent in self.sim_agents:
@@ -604,8 +687,10 @@ class OvercookedEnvironment(gym.Env):
         for agent in self.sim_agents:
             returnVal = interact(agent=agent, world=self.world)
             if returnVal == 1:      # an agent on team1 delivered a dish
+                self.delivered1 += 1
                 self.team1_score += 100
             elif returnVal == 2:      # an agent on team2 delivered a dish
+                self.delivered2 += 1
                 self.team2_score += 100
             self.agent_actions[agent.name] = agent.action
 

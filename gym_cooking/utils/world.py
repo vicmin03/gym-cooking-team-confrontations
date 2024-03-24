@@ -43,8 +43,6 @@ class World:
             objs += o
         for obj in objs:
             self.add_object(obj, obj.location)
-        # for obj in self.objects["Tomato"]:
-        #     self.add_object(obj, obj.location)
         return self.rep
 
     def print_objects(self):
