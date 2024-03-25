@@ -14,7 +14,7 @@ import itertools
 
 import gym
 from dqn.network import Network
-from cooking_maddpg.experience_replay_buffer import ExperienceReplayBuffer
+from dqn.replay_buffer import ReplayBuffer
 from make_env import make_env
 import gym
 import torch as T
@@ -124,7 +124,8 @@ def initialize_agents(arglist):
 GAMMA = 0.99     # the discount rate
 BATCH_SIZE = 32    # no of samples we sample from the memory buffer
 BUFFER_SIZE = 50000     # the max no. of samples stores in the buffer before overriding old transitions
-MIN_REPLAY_SIZE = 1000      # the no. of transitions we need in repay buffer before training can begin
+# MIN_REPLAY_SIZE = 1000      # the no. of transitions we need in repay buffer before training can begin
+MIN_REPLAY_SIZE = 33
 EPSILON_START = 1.0
 EPSILON_END = 0.02
 EPSILON_DECAY = 10000   # epsilon decreases from start_val to end_val over this many steps
@@ -142,11 +143,14 @@ if __name__ == '__main__':
     # replay_buffer = ExperienceReplayBuffer(buffer_size=1000000, num_agents=2, obs_dims=64, batch_size=1024)
     replay_buffer = deque(maxlen=BUFFER_SIZE)
     
-    # reward buffer keeps history of rewards
-    # keeps track of history of rewards
-    reward_buffer = deque([0,0], maxlen=100)
+    # reward buffer keeps history of rewards, as tuples for rewards of each team (team1_reward, team2_reward)
+    # reward_buffer = deque([0,0], maxlen=100)
+    reward_buffer = deque(maxlen=100)
 
+    team1_reward = 0
+    team2_reward = 0
 
+    # set up online and target networks
     online_net = Network(env)
     target_net = Network(env)
 
@@ -155,7 +159,7 @@ if __name__ == '__main__':
 
     optimizer = T.optim.Adam(online_net.parameters(), lr=5e-4)
 
-    # Initialise replay buffer
+    # Initialise replay buffer by randomly choosing actions in the environment and saving rewards
     for i in range (MIN_REPLAY_SIZE):
         action_dict = {}
 
@@ -163,20 +167,19 @@ if __name__ == '__main__':
             random_sample = random.random()
 
             # choose a random action to perform in the environment 
-            action = random.choice(env.action_space)
+            action = random.choice(env.possible_actions)
             action_dict[agent.name] = action
 
         # get observation from performing action
-        new_obs, reward, done, info = env.step(action_dict)
+        new_obs, reward1, reward2, done, info = env.step(action_dict)
 
         # save transition as record in replay buffer
-        transition = (obs, action, reward, done, new_obs)
+        transition = (obs, action, reward1, reward2, done, new_obs)
         replay_buffer.append(transition)
         obs = new_obs
 
         if done:
             obs = env.reset()
-
 
 
     # training loop
@@ -190,39 +193,40 @@ if __name__ == '__main__':
         for agent in dqn_agents:
             random_sample = random.random()
 
-            action = agent.select_action(obs=obs)
-            action_dict[agent.name] = action
-
             if random_sample <= epsilon:
                 # take a random action = exploration
-                action = random.choice(env.action_space)
+                action = random.choice(env.possible_actions)
             else:
                 # or intelligently choose an action based on learning
-                action = online_net.act(obs)
+                action = online_net.select_action(obs)
+            print(agent.name)
+            action_dict[agent.name] = action
 
             # get + save observation from performing action
                 # done flag indicates whether a terminal state or not
-            new_obs, reward, done, info = env.step(action_dict)
+        new_obs, reward1, reward2, done, info = env.step(action_dict)
 
-            transition = (obs, action, reward, done, new_obs)
-            replay_buffer.append(transition)
-            obs = new_obs
+        # transition = (obs, action, reward1, reward2, done, new_obs)
+        transition = (obs, action, reward1, reward2, done, new_obs)
+        replay_buffer.append(transition)
+        obs = new_obs
 
-            episode_reward += reward
+        team1_reward += reward1
+        team2_reward += reward2
 
         if done:
             obs = env.reset()
 
-            reward_buffer.append(episode_reward)   
-            episode_reward = 0.0
+            reward_buffer.append((team1_reward, team2_reward))  
+            team1_reward = 0
+            team2_reward = 0
 
         if len(reward_buffer) >= 100:
             if np.mean(reward_buffer) >= 195:
                 while True: 
                     action = online_net.act(obs)
-
-                    obs, _, done, _ = env.step(action)
-                    env.render() # to show display 
+                    obs, _, _, done, _ = env.step(action)
+                    env.display()
                     if done: 
                         env.reset()
 
@@ -233,14 +237,18 @@ if __name__ == '__main__':
         # extract each part from the transition tuples into their own np array
         observations = np.asarray([t[0] for t in transitions])
         actions = np.asarray([t[1] for t in transitions])
-        rewards = np.asarray([t[2] for t in transitions])
-        dones = np.asarray([t[3] for t in transitions])
-        new_observations = np.asarray([t[4] for t in transitions])
+        rewards1 = np.asarray([t[2] for t in transitions])
+        rewards2 = np.asarray([t[3] for t in transitions])
+        dones = np.asarray([t[4] for t in transitions])
+        new_observations = np.asarray([t[5] for t in transitions])
+
+        # print(observations)
 
         # turning into tensors
         observations_t = T.as_tensor(observations, dtype=T.float32) 
         actions_t = T.as_tensor(actions, dtype=T.int64).unsqueeze(-1)
-        rewards_t = T.as_tensor(rewards, dtype=T.float32).unsqueeze(-1)
+        rewards1_t = T.as_tensor(rewards1, dtype=T.float32).unsqueeze(-1)
+        rewards2_t = T.as_tensor(rewards2, dtype=T.float32).unsqueeze(-1)
         dones_t = T.as_tensor(dones, dtype=T.float32).unsqueeze(-1)
         new_observations_t = T.as_tensor(new_observations, dtype=T.float32)
 
@@ -250,14 +258,25 @@ if __name__ == '__main__':
             # max returns a tuple with (highest_val, index)
         max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
 
-        targets = rewards_t * GAMMA * (1- dones_t) * max_target_q_values
+
+        # TODO: should have two diff networks for each team?
+        targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
 
         # Compute Loss
             # get expected q values from the online nn based on the given observations
         q_values = online_net(observations_t)
 
+        action_indices = []
+        for a in actions:
+            print(env.possible_actions.index((a[0], a[1])))
+            action_indices.append(env.possible_actions.index((a[0], a[1])))
+        action_indices = np.asarray(action_indices)
+        # action_indices = np.asarray([env.possible_actions.index(a) for a in actions])
+        action_indices_t = T.as_tensor(action_indices, dtype=T.int64).unsqueeze(-1)
+
+
             # this applies the index of the action we're taking (actions_t) to get the q_value for that action
-        action_q_values = T.gather(input=q_values, dim=1, index=actions_t)
+        action_q_values = T.gather(input=q_values, dim=1, index=action_indices_t)
 
         # compute the loss with huber loss function
         loss = nn.functional.smooth_l1_loss(action_q_values, targets)
@@ -273,9 +292,10 @@ if __name__ == '__main__':
             target_net.load_state_dict(online_net.state_dict())
 
         # Logging to check
-        if step % 1000 == 0:
+        if step % 100 == 0:
             print()
             print("Step", step)
-            print("Average Reward: ", np.mean(reward_buffer))
+            print("Average Reward for team 1: ", np.mean(reward[0] for reward in reward_buffer))
+            print("Average Reward for team 2: ", np.mean(reward[1] for reward in reward_buffer))
 
     

@@ -16,6 +16,7 @@ from utils.core import *
 from utils.agent import SimAgent
 from misc.game.gameimage import GameImage
 from utils.agent import COLORS, TEAM_COLORS
+from utils.utils import rep_to_int
 
 import copy
 import networkx as nx
@@ -62,8 +63,8 @@ class OvercookedEnvironment(gym.Env):
         self.delivered2 = 0
 
         # all possible actions in this environment
-        # self.action_space = Discrete(5)
-        self.action_space = [(0, 1), (0, -1), (1, 0), (-1, 0), (0, 0)]
+        self.action_space = Discrete(5)
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0), (0, 0)]
 
 
     def get_repr(self):
@@ -194,7 +195,9 @@ class OvercookedEnvironment(gym.Env):
         self.world.height = y
         self.world.perimeter = 2*(self.world.width + self.world.height)
 
-        self.observation_space = Box(low=0, high=2, shape=(self.world.height, self.world.width, 10), dtype=np.int32)
+        self.observation_space = []
+        for agent in self.sim_agents:
+            self.observation_space.append(Box(low=0, high=2, shape=(self.world.height, self.world.width, 10), dtype=np.int32))
 
     # def create_spaces(self):
     #     # observation space - locations of special gridsquares (blue, red, trash), objects and agents in the world
@@ -241,10 +244,40 @@ class OvercookedEnvironment(gym.Env):
         else:
             self.game = None
 
-        return copy.copy(self)
+        return self.create_obs()
+        # return copy.copy(self)
 
     def close(self):
         return
+    
+
+    def create_obs(self):
+        # make a simple vector containing location of all agents, delivery locations
+        obs = []
+        # for agent in self.sim_agents:
+        #     obs.append(agent.location)
+        
+        # delivery_1 = list(filter(lambda o: o.name=='DeliveryBlue', self.world.get_object_list()))[0].location
+        # delivery_2 = list(filter(lambda o: o.name=='DeliveryRed', self.world.get_object_list()))[0].location
+        # obs.append(delivery_1)
+        # obs.append(delivery_2)
+
+        self.update_display()
+
+        # get string representation of objects in the world
+
+        string_rep = self.world.string_rep
+
+        for agent in self.sim_agents:
+            string_rep[agent.location[1]][agent.location[0]] = 'a'
+
+        print(string_rep)
+
+        for row in string_rep:
+            for elem in row:
+                obs.append(rep_to_int(elem))
+
+        return obs
 
     def encode_obs(self, agents):
         # Encode grid representation
@@ -295,7 +328,7 @@ class OvercookedEnvironment(gym.Env):
         print("[environment.step] @ TIMESTEP {}".format(self.t))
         print("===============================")
 
-
+        # obs2 = []
         # Get actions.
         for sim_agent in self.sim_agents:
             sim_agent.action = action_dict[sim_agent.name]
@@ -307,9 +340,13 @@ class OvercookedEnvironment(gym.Env):
         # Execute.
         self.execute_navigation()
 
+        # get locations of agents after performing actions
+        # for sim_agent in self.sim_agents:
+        #     obs2.append(sim_agent.location)
+
         # Visualize.
         self.display()
-        self.print_agents()
+        # self.print_agents()
         if self.arglist.record:
             self.game.save_image_obs(self.t)
 
@@ -320,14 +357,15 @@ class OvercookedEnvironment(gym.Env):
             image_obs = self.game.get_image_obs()
 
         done = self.done()
-        # reward1, reward2 = self.reward()
-        reward = self.reward()
+        reward1, reward2 = self.reward()
+
+        obs2 = self.create_obs()
 
         info = {"t": self.t, "obs": new_obs,
                 "image_obs": image_obs,
                 "done": done, "termination_info": self.termination_info}
         # return new_obs, reward1, reward2, done, info
-        return new_obs, reward, done, info
+        return obs2, reward1, reward2, done, info
 
     def get_team1_score(self):
         return self.team1_score
@@ -348,6 +386,7 @@ class OvercookedEnvironment(gym.Env):
                     self.arglist.max_num_timesteps)
             self.successful = False
             return True
+        return False
 
         # assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
 
@@ -383,34 +422,34 @@ class OvercookedEnvironment(gym.Env):
         # returns whether there was a new delivery for each team in this timestep
         return delivered_1 > self.delivered1, delivered_2 > self.delivered2
             
-    def reward(self):
-        return 1
-        
     # def reward(self):
-    #    # rewards for each team depending if something was delivered
-    #     r1, r2 = 0, 0
-    #     score1, score2 = self.delivered()
-    #     if score1:
-    #         r1 += 1
-    #         r2 += -1
-    #     elif score2:
-    #         r1 += -1
-    #         r2 += 1
-
-    #     # 0.1 if hoarded one item
-    #     # 0.8 if stole another team's dish, -0.8 if stolen from them
-    #     # r1 += 0.8 if len(objects belonging to team1) + 1
-
-    #     # distance to goal location? B_loc????/
-    #         # call AB_locs for every agent and their subtask
-    #         # calculate distance between their current location + goal + are they holding goal obj?
- 
-    #     # if something got trashed 
-    #         # r1 -= 0.5
-    #         # r2 -= 0.5 ??????
+    #     return 1
         
-    #     # return two rewards (team1, team2)
-    #     return r1, r2
+    def reward(self):
+       # rewards for each team depending if something was delivered
+        r1, r2 = 0, 0
+        score1, score2 = self.delivered()
+        if score1:
+            r1 += 1
+            r2 += -1
+        elif score2:
+            r1 += -1
+            r2 += 1
+
+        # 0.1 if hoarded one item
+        # 0.8 if stole another team's dish, -0.8 if stolen from them
+        # r1 += 0.8 if len(objects belonging to team1) + 1
+
+        # distance to goal location? B_loc????/
+            # call AB_locs for every agent and their subtask
+            # calculate distance between their current location + goal + are they holding goal obj?
+ 
+        # if something got trashed 
+            # r1 -= 0.5
+            # r2 -= 0.5 ??????
+        
+        # return two rewards (team1, team2)
+        return r1, r2
 
     def print_agents(self):
         for sim_agent in self.sim_agents:
@@ -424,7 +463,8 @@ class OvercookedEnvironment(gym.Env):
         self.rep = self.world.update_display()
         for agent in self.sim_agents:
             x, y = agent.location
-            self.rep[y][x] = str(agent)
+            # self.rep[y][x] = agent.name
+            self.rep[y][x] = 'a'
 
     def get_agent_names(self):
         return [agent.name for agent in self.sim_agents]
@@ -681,7 +721,7 @@ class OvercookedEnvironment(gym.Env):
         for i, agent in enumerate(self.sim_agents):
             if not execute[i]:
                 agent.action = (0, 0)
-            print("{} has action {}".format((agent.name, agent.color), agent.action))
+            print("{} at {} has action {}".format((agent.name, agent.color), agent.location, agent.action))
 
     def execute_navigation(self):
         for agent in self.sim_agents:

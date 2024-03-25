@@ -12,7 +12,13 @@ class Network(nn.Module):
         super().__init__()
         
         # number of inputs to nn = product of features in observation space
-        in_features = int(np.prod(env.observation_space.shape))
+        in_features = 0
+        for i in env.observation_space:
+            for x in i.shape:
+                in_features += x
+        print(in_features, " = number of input features")
+        # in_features = int(np.prod(sum(x for x in features)))
+        # in_features = 
         
         self.net = nn.Sequential(
             # input layer
@@ -23,11 +29,12 @@ class Network(nn.Module):
             nn.Linear(64, 5)
         )
 
+
     def forward(self, x):
         return self.net(x)
     
     # determining what action to take
-    def act(self, obs):
+    def select_action(self, obs):
         # turn observation into a tensor (vector of each dimension value)
         obs_t = torch.as_tensor(obs, dtype=torch.float32)
 

@@ -189,6 +189,7 @@ class Object:
         self.collidable = False
         self.dynamic = False
         self.last_held = None   # the last team to hold the dish - 1 or 2
+        self.rep = ''
 
     def __str__(self):
         res = "-".join(list(map(lambda x : str(x), sorted(self.contents, key=lambda i: i.name))))

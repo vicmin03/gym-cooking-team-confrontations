@@ -8,7 +8,7 @@ from functools import lru_cache
 
 import recipe_planner.utils as recipe
 from navigation_planner.utils import manhattan_dist
-from utils.core import Object, GridSquare, Counter
+from utils.core import *
 
 
 class World:
@@ -17,6 +17,7 @@ class World:
 
     def __init__(self, arglist):
         self.rep = [] # [row0, row1, ..., rown]
+        self.string_rep = []
         self.arglist = arglist
         self.objects = defaultdict(lambda : [])
 
@@ -38,12 +39,14 @@ class World:
     def update_display(self):
         # Reset the current display (self.rep).
         self.rep = [[' ' for i in range(self.width)] for j in range(self.height)]
+        self.string_rep = [[' ' for i in range(self.width)] for j in range(self.height)]
         objs = []
         for o in self.objects.values():
             objs += o
         for obj in objs:
             self.add_object(obj, obj.location)
         return self.rep
+
 
     def print_objects(self):
         for k, v in self.objects.items():
@@ -207,13 +210,19 @@ class World:
         """Clears object @ position in self.rep and replaces it with an empty space"""
         x, y = position
         self.rep[y][x] = ' '
+        self.string_rep[y][x] = ' '
 
     def clear_all(self):
         self.rep = []
+        self.string_rep = []
 
     def add_object(self, object_, position):
         x, y = position
         self.rep[y][x] = str(object_)
+        self.string_rep[y][x] = object_.rep
+        if object_.rep == '':
+            self.string_rep[y][x] = object_.contents[0].rep
+
 
     def insert(self, obj):
         self.objects.setdefault(obj.name, []).append(obj)
