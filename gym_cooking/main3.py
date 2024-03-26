@@ -62,7 +62,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def initialize_agents(arglist):
+def initialize_agents(arglist, env):
     real_agents = []
 
     with open('utils/levels/{}.txt'.format(arglist.level), 'r') as f:
@@ -101,7 +101,7 @@ def initialize_agents(arglist):
                             arglist=arglist,
                             name='agent-'+str(len(real_agents)+1),
                             id_color=TEAM_COLORS[len(real_agents) % 2][int(len(real_agents)/2)],
-                            recipes=recipes, hoarder=hoarder)
+                            recipes=recipes, hoarder=hoarder, online_net=Network(env), target_net = Network(env))
                     real_agent.set_team((len(real_agents) % 2) + 1)
                     real_agents.append(real_agent)
 
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
     obs = env.reset()
 
-    dqn_agents = initialize_agents(arglist=arglist)
+    dqn_agents = initialize_agents(arglist=arglist, env=env)
 
     # replay buffer to keep track of action history and transitions
     # replay_buffer = ExperienceReplayBuffer(buffer_size=1000000, num_agents=2, obs_dims=64, batch_size=1024)
@@ -151,13 +151,13 @@ if __name__ == '__main__':
     team2_reward = 0
 
     # set up online and target networks
-    online_net = Network(env)
-    target_net = Network(env)
+    # online_net = Network(env)
+    # target_net = Network(env)
 
     # loads the parameters of the online network to the target network
-    target_net.load_state_dict(online_net.state_dict())
+    for agent in dqn_agents:
+        agent.target_net.load_state_dict(agent.online_net.state_dict())
 
-    optimizer = T.optim.Adam(online_net.parameters(), lr=5e-4)
 
     # Initialise replay buffer by randomly choosing actions in the environment and saving rewards
     for i in range (MIN_REPLAY_SIZE):
@@ -199,7 +199,6 @@ if __name__ == '__main__':
             else:
                 # or intelligently choose an action based on learning
                 action = online_net.select_action(obs)
-            print(agent.name)
             action_dict[agent.name] = action
 
             # get + save observation from performing action
@@ -214,21 +213,23 @@ if __name__ == '__main__':
         team1_reward += reward1
         team2_reward += reward2
 
+        reward_buffer.append((team1_reward, team2_reward))  
+        team1_reward = 0
+        team2_reward = 0
+
         if done:
             obs = env.reset()
 
-            reward_buffer.append((team1_reward, team2_reward))  
-            team1_reward = 0
-            team2_reward = 0
 
-        if len(reward_buffer) >= 100:
-            if np.mean(reward_buffer) >= 195:
-                while True: 
-                    action = online_net.act(obs)
-                    obs, _, _, done, _ = env.step(action)
-                    env.display()
-                    if done: 
-                        env.reset()
+
+        # if len(reward_buffer) >= 100:
+        #     if np.mean(reward_buffer) >= 195:
+        #         while True: 
+        #             action = online_net.act(obs)
+        #             obs, _, _, done, _ = env.step(action)
+        #             # env.display()
+        #             if done: 
+        #                 env.reset()
 
         # Start Gradient Step ----------
         # samples BATCH_SIZE number of transitions from the replay buffer into a list 
@@ -268,7 +269,6 @@ if __name__ == '__main__':
 
         action_indices = []
         for a in actions:
-            print(env.possible_actions.index((a[0], a[1])))
             action_indices.append(env.possible_actions.index((a[0], a[1])))
         action_indices = np.asarray(action_indices)
         # action_indices = np.asarray([env.possible_actions.index(a) for a in actions])
@@ -295,7 +295,16 @@ if __name__ == '__main__':
         if step % 100 == 0:
             print()
             print("Step", step)
-            print("Average Reward for team 1: ", np.mean(reward[0] for reward in reward_buffer))
-            print("Average Reward for team 2: ", np.mean(reward[1] for reward in reward_buffer))
+            sum1 = 0
+            sum2 = 0
+            for reward in reward_buffer:
+                
+                sum1 += reward[0]
+                sum2 += reward[1]
+                print("reward for team 1 is", sum1)
+                print("length of ", reward_buffer, "is, ", len(reward_buffer))
+            # print("Average Reward for team 1: ", np.mean(reward[0] for reward in reward_buffer))
+            print("Average Reward for team 1: ", sum1/len(reward_buffer))
+            print("Average Reward for team 2: ", sum2/len(reward_buffer))
 
     

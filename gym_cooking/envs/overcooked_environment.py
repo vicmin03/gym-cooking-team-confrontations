@@ -271,55 +271,11 @@ class OvercookedEnvironment(gym.Env):
         for agent in self.sim_agents:
             string_rep[agent.location[1]][agent.location[0]] = 'a'
 
-        print(string_rep)
-
         for row in string_rep:
             for elem in row:
                 obs.append(rep_to_int(elem))
 
         return obs
-
-    def encode_obs(self, agents):
-        # Encode grid representation
-        # grid_tensor = T.tensor(np.array(self.world.width, self.world.height), dtype=T.float32).unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
-        
-        # Encode agent information
-        agent_locations = [agent.location for agent in self.sim_agents]
-        num_agents = len(self.sim_agents)
-        agent_info_tensor = T.zeros(1, 2 * num_agents)  #  each agent has (x, y) position
-        for i, location in enumerate(agent_locations):
-            agent_info_tensor[0, i * 2: (i + 1) * 2] = T.tensor(location, dtype=T.float32)
-        
-        # locations of objects
-        obj_locations = [obj.location for obj in self.world.get_object_list()]
-        num_objs = len(self.world.get_object_list())
-        obj_info_tensor = T.zeros(1, 2 * num_objs)  #  each object has (x, y) position
-        for i, location in enumerate(obj_locations):
-            obj_info_tensor[0, i * 2: (i + 1) * 2] = T.tensor(location, dtype=T.float32)
-
-        # one hot vector encoding of the type of each object
-        # Define object types and their corresponding indices
-        # object_types = [Floor, Counter, SpawnCounter, Trashcan, DeliveryBlue, DeliveryRed, Cutboard, Tomato, Lettuce, Onion, Plate]
-        # object_types = [Floor, Counter, SpawnCounter, Trashcan, DeliveryBlue, DeliveryRed, Cutboard, Object]
-        # num_object_types = len(object_types)
-
-        # obj_type_vectors = []
-        # for obj in self.world.get_object_list():
-        #     # obj_type = type(obj)
-        #     # # if isinstance()
-        #     object_type_index = object_types.index(type(obj))
-        #     obj_type_one_hot = T.zeros(num_object_types)
-        #     obj_type_one_hot[object_type_index] = 1
-        #     obj_type_vectors.append(obj_type_one_hot)
-        
-        # obj_type_tensor = T.from_numpy(np.array(obj_type_vectors))
-
-        # Concatenate tensors
-        # encoded_obs= T.cat((grid_tensor, agent_info_tensor, goal_info_tensor), dim=1)
-        encoded_obs= T.cat((agent_info_tensor, obj_info_tensor), dim=1)
-        
-        print(encoded_obs)
-        return encoded_obs
 
     def step(self, action_dict):
         # Track internal environment info.
@@ -388,24 +344,11 @@ class OvercookedEnvironment(gym.Env):
             return True
         return False
 
-        # assert any([isinstance(subtask, recipe.Deliver) for subtask in self.all_subtasks]), "no delivery subtask"
+    
 
-        # # Done if subtask is completed.
-        # for subtask in self.all_subtasks:
-        #     # Double check all goal_objs are at Delivery.
-        #     if isinstance(subtask, recipe.Deliver):
-        #         _, goal_obj = nav_utils.get_subtask_obj(subtask)
-
-        #         delivery_loc = list(filter(lambda o: o.name=='Delivery' or 'DeliveryBlue' or 'DeliveryRed', self.world.get_object_list()))[0].location
-        #         goal_obj_locs = self.world.get_all_object_locs(obj=goal_obj)
-        #         if not any([gol == delivery_loc for gol in goal_obj_locs]):
-        #             self.termination_info = ""
-        #             self.successful = False
-        #             return False
-
-        # self.termination_info = "Terminating because all deliveries were completed"
-        # self.successful = True
-        # return True
+    def picked_up(self, agents):
+        for agent in agents:
+            print("hi")
 
     def delivered(self):
         for subtask in self.all_subtasks:
@@ -422,19 +365,39 @@ class OvercookedEnvironment(gym.Env):
         # returns whether there was a new delivery for each team in this timestep
         return delivered_1 > self.delivered1, delivered_2 > self.delivered2
             
-    # def reward(self):
-    #     return 1
-        
+    
+    def done_tasks(self):
+        rewards = [0, 0]
+        for subtask in self.all_subtasks:
+            # TO DO: split into 2 networks
+            if self.check_subtask_complete(subtask, team):
+                if isinstance(subtask, recipe.Chop):
+                    rewards[team-1] = rewards[team-1] + 1
+                elif isinstance(subtask, recipe.Chop):
+                    r1 
+
+        return r1, r2
+            
+
+
     def reward(self):
        # rewards for each team depending if something was delivered
         r1, r2 = 0, 0
         score1, score2 = self.delivered()
-        if score1:
+        if score1:    # if team1 delivered, increases their score
             r1 += 1
             r2 += -1
-        elif score2:
+        elif score2:     # if team2 delivered, increases their score
             r1 += -1
             r2 += 1
+
+
+        # reward for doing diff actions - picking something up, chopping something, merging something, 
+            # reward based on completing a subtask???
+                # bd assignment of subtasks?
+                # random assignment of subtasks?
+        
+
 
         # 0.1 if hoarded one item
         # 0.8 if stole another team's dish, -0.8 if stolen from them
@@ -484,6 +447,7 @@ class OvercookedEnvironment(gym.Env):
 
         # adding confrontation tasks to possible subtasks
         all_subtasks += self.recipes[0].get_con_actions()
+        print("HERE ARE ALL SUBTASKS: ", all_subtasks)
         return all_subtasks
         
     def get_AB_locs_given_objs(self, agent, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
@@ -771,3 +735,106 @@ class OvercookedEnvironment(gym.Env):
         # Save all distances under world as well.
         self.world.distances = self.distances
 
+
+
+    def _check_subtask_complete(self, subtask, team):
+        """Defining a goal state for subtask to check whether it has been done"""
+
+        if subtask is None:
+            return False
+
+        # Termination condition is when desired object is at a Deliver location.
+        # elif isinstance(subtask, Deliver):
+        #     self.cur_obj_count = len(
+        #             list(filter(lambda o: o in set(env.world.get_all_object_locs(
+        #                     self.subtask_action_obj)),
+        #             env.world.get_object_locs(self.goal_obj, is_held=False))))
+        #     self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+        #     self.is_goal_state = lambda h: self.has_more_obj(
+        #             len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+        #             self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))
+
+        #     if self.removed_object is not None and self.removed_object == self.goal_obj:
+        #         self.is_subtask_complete = lambda w: self.has_more_obj(
+        #                 len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+        #                 w.get_object_locs(self.goal_obj, is_held=False)))) + 1)
+        #     else:
+        #         self.is_subtask_complete = lambda w: self.has_more_obj(
+        #                 len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+        #                 w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+                
+        # for trash subtask, condition is met if the count of objects in the world is lowered
+        elif isinstance(subtask, recipe.Trash):
+
+            # gets count of all goal objects that haven't already been delivered
+            cur_obj_count = len(list(self.world.get_all_object_locs(self.goal_obj)))
+                # but can't trash delivered objects - remove delivered objects?
+            has_less_obj = lambda x: int(x) < self.cur_obj_count
+
+            if self.removed_object is not None and self.removed_object == self.goal_obj:
+                self.is_subtask_complete = lambda w: self.has_less_obj(
+                        len(w.get_all_object_locs(self.goal_obj)) + 1)
+            else:
+                self.is_subtask_complete = lambda w: self.has_less_obj(
+                        len(w.get_all_object_locs(self.goal_obj)))
+
+
+        # for steal subtask, condition is met if object is taken (number of objects last_held by other team -1s/ goal object last_held is this agent's team)
+        elif isinstance(subtask, Steal):
+            # all dishes - excluding those that have already been delivered
+
+            dishes = map(lambda d: env.world.get_object_at(d, None, find_held_objects = False), env.world.get_object_locs(obj=self.goal_obj, is_held=False))
+
+            self.cur_obj_count = len(list(filter(lambda a: (a.last_held != team), dishes)))
+            
+            self.is_goal_state = lambda h: self.has_less_obj(
+                    len(list(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj))))
+
+            self.has_less_obj = lambda x: int(x) < self.cur_obj_count
+
+            self.is_subtask_complete = lambda w: self.has_less_obj(
+                    len(list(filter(lambda a: (a.last_held != team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), w.get_object_locs(obj=self.goal_obj, is_held=False))))))
+  
+        # for hoard subtask, condition is met once a single object has been moved to its goal location
+            # goal complete if count of ingredients + 1 and it is placed on a counter
+        elif isinstance(subtask, Hoard):
+            # gets number of ingredients currently on counters
+            self.cur_obj_count = len(set(env.world.get_object_locs(self.goal_obj, is_held=False)))
+            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            
+            self.is_goal_state = lambda h: self.has_more_obj(
+                len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), set(
+                self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False))))))
+
+            # to be completed, need to have placed object on counter
+            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.goal_obj, is_held=False))))
+
+
+        elif isinstance(subtask, Chop):
+            self.cur_obj_count = len(env.world.get_all_object_locs(self.goal_obj))
+
+            # Goal state is reached when the number of desired objects has increased.
+            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            self.is_goal_state = lambda h: self.has_more_obj(
+                    len(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj)))
+            if self.removed_object is not None and self.removed_object == self.goal_obj:
+                self.is_subtask_complete = lambda w: self.has_more_obj(
+                        len(w.get_all_object_locs(self.goal_obj)) + 1)
+            else:
+                self.is_subtask_complete = lambda w: self.has_more_obj(
+                        len(w.get_all_object_locs(self.goal_obj)))
+
+        else:
+            # Get current count of desired objects.
+            
+            self.cur_obj_count = len(env.world.get_all_object_locs(self.goal_obj))
+            # Goal state is reached when the number of desired objects has increased.
+            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            self.is_goal_state = lambda h: self.has_more_obj(
+                    len(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj)))
+            if self.removed_object is not None and self.removed_object == self.goal_obj:
+                self.is_subtask_complete = lambda w: self.has_more_obj(
+                        len(w.get_all_object_locs(self.goal_obj)) + 1)
+            else:
+                self.is_subtask_complete = lambda w: self.has_more_obj(
+                        len(w.get_all_object_locs(self.goal_obj)))
