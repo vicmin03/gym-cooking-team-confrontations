@@ -47,14 +47,14 @@ def parse_arguments():
     # Models
     # Valid options: `bd` = Bayes Delegation; `up` = Uniform Priors
     # `dc` = Divide & Conquer; `fb` = Fixed Beliefs; `greedy` = Greedy, 'rl' = reinforcement learning
-    parser.add_argument("--model1", type=str, default=None, help="Model type for agent 1 (bd, up, dc, fb, or greedy)")
-    parser.add_argument("--model2", type=str, default=None, help="Model type for agent 2 (bd, up, dc, fb, or greedy)")
-    parser.add_argument("--model3", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, or greedy)")
-    parser.add_argument("--model4", type=str, default=None, help="Model type for agent 4 (bd, up, dc, fb, or greedy)")
-    parser.add_argument("--model5", type=str, default=None, help="Model type for agent 1 (bd, up, dc, fb, or greedy)")
-    parser.add_argument("--model6", type=str, default=None, help="Model type for agent 2 (bd, up, dc, fb, or greedy)")
-    parser.add_argument("--model7", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, or greedy)")
-    parser.add_argument("--model8", type=str, default=None, help="Model type for agent 4 (bd, up, dc, fb, or greedy)")
+    parser.add_argument("--model2", type=str, default=None, help="Model type for agent 2 (bd, up, dc, fb, greedy or dqn)")
+    parser.add_argument("--model3", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, greedy or dqn)")
+    parser.add_argument("--model4", type=str, default=None, help="Model type for agent 4 (bd, up, dc, fb, greedy or dqn)")
+    parser.add_argument("--model1", type=str, default=None, help="Model type for agent 1 (bd, up, dc, fb, greedy or dqn)")
+    parser.add_argument("--model5", type=str, default=None, help="Model type for agent 1 (bd, up, dc, fb, greedy or dqn)")
+    parser.add_argument("--model6", type=str, default=None, help="Model type for agent 2 (bd, up, dc, fb, greedy or dqn)")
+    parser.add_argument("--model7", type=str, default=None, help="Model type for agent 3 (bd, up, dc, fb, greedy or dqn)")
+    parser.add_argument("--model8", type=str, default=None, help="Model type for agent 4 (bd, up, dc, fb, greedy or dqn)")
 
     # whether each team will have a hoarder agent (1st agent on each team)
     parser.add_argument("--hoarder", type=bool, default=False, help="Whether there is an agent performing hoarding for this team")
@@ -140,7 +140,6 @@ if __name__ == '__main__':
     dqn_agents = initialize_agents(arglist=arglist, env=env)
 
     # replay buffer to keep track of action history and transitions
-    # replay_buffer = ExperienceReplayBuffer(buffer_size=1000000, num_agents=2, obs_dims=64, batch_size=1024)
     replay_buffer = deque(maxlen=BUFFER_SIZE)
     
     # reward buffer keeps history of rewards, as tuples for rewards of each team (team1_reward, team2_reward)
@@ -174,7 +173,7 @@ if __name__ == '__main__':
         new_obs, reward1, reward2, done, info = env.step(action_dict)
 
         # save transition as record in replay buffer
-        transition = (obs, action, reward1, reward2, done, new_obs)
+        transition = (obs.create_obs(), action, reward1, reward2, done, new_obs.create_obs())
         replay_buffer.append(transition)
         obs = new_obs
 
@@ -198,7 +197,7 @@ if __name__ == '__main__':
                 action = random.choice(env.possible_actions)
             else:
                 # or intelligently choose an action based on learning
-                action = online_net.select_action(obs)
+                action = agent.online_net.select_action(obs)
             action_dict[agent.name] = action
 
             # get + save observation from performing action
@@ -206,7 +205,7 @@ if __name__ == '__main__':
         new_obs, reward1, reward2, done, info = env.step(action_dict)
 
         # transition = (obs, action, reward1, reward2, done, new_obs)
-        transition = (obs, action, reward1, reward2, done, new_obs)
+        transition = (obs.create_obs(), action, reward1, reward2, done, new_obs.create_obs())
         replay_buffer.append(transition)
         obs = new_obs
 
@@ -221,16 +220,6 @@ if __name__ == '__main__':
             obs = env.reset()
 
 
-
-        # if len(reward_buffer) >= 100:
-        #     if np.mean(reward_buffer) >= 195:
-        #         while True: 
-        #             action = online_net.act(obs)
-        #             obs, _, _, done, _ = env.step(action)
-        #             # env.display()
-        #             if done: 
-        #                 env.reset()
-
         # Start Gradient Step ----------
         # samples BATCH_SIZE number of transitions from the replay buffer into a list 
         transitions = random.sample(replay_buffer, BATCH_SIZE)
@@ -243,11 +232,16 @@ if __name__ == '__main__':
         dones = np.asarray([t[4] for t in transitions])
         new_observations = np.asarray([t[5] for t in transitions])
 
-        # print(observations)
+        
+        action_indices = []
+        for a in actions:
+            action_indices.append(env.possible_actions.index((a[0], a[1])))
+        action_indices = np.asarray(action_indices)
+        action_indices_t = T.as_tensor(action_indices, dtype=T.int64).unsqueeze(-1)
 
         # turning into tensors
         observations_t = T.as_tensor(observations, dtype=T.float32) 
-        actions_t = T.as_tensor(actions, dtype=T.int64).unsqueeze(-1)
+        # actions_t = T.as_tensor(actions, dtype=T.int64).unsqueeze(-1)
         rewards1_t = T.as_tensor(rewards1, dtype=T.float32).unsqueeze(-1)
         rewards2_t = T.as_tensor(rewards2, dtype=T.float32).unsqueeze(-1)
         dones_t = T.as_tensor(dones, dtype=T.float32).unsqueeze(-1)
@@ -255,41 +249,38 @@ if __name__ == '__main__':
 
         # Compute Targets
             # gets a set of q values for each observation, with q as the first dimension
-        target_q_values = target_net(new_observations_t)
-            # max returns a tuple with (highest_val, index)
-        max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
+        
+        for agent in dqn_agents:
+            target_q_values = agent.target_net(new_observations_t)
+                # max returns a tuple with (highest_val, index)
+            max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
 
 
-        # TODO: should have two diff networks for each team?
-        targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
+            # TODO: should have two diff networks for each team?
+            targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
 
-        # Compute Loss
-            # get expected q values from the online nn based on the given observations
-        q_values = online_net(observations_t)
-
-        action_indices = []
-        for a in actions:
-            action_indices.append(env.possible_actions.index((a[0], a[1])))
-        action_indices = np.asarray(action_indices)
-        # action_indices = np.asarray([env.possible_actions.index(a) for a in actions])
-        action_indices_t = T.as_tensor(action_indices, dtype=T.int64).unsqueeze(-1)
+            # Compute Loss
+                # get expected q values from the online nn based on the given observations
+            q_values = agent.online_net(observations_t)
 
 
-            # this applies the index of the action we're taking (actions_t) to get the q_value for that action
-        action_q_values = T.gather(input=q_values, dim=1, index=action_indices_t)
 
-        # compute the loss with huber loss function
-        loss = nn.functional.smooth_l1_loss(action_q_values, targets)
 
-        # Gradient Descent
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+                # this applies the index of the action we're taking (actions_t) to get the q_value for that action
+            action_q_values = T.gather(input=q_values, dim=1, index=action_indices_t)
 
-        # Update Target Network parameters
-        if step % TARGET_UPDATE_FREQ == 0:
-            # updates the target network params to be the same as the online network
-            target_net.load_state_dict(online_net.state_dict())
+            # compute the loss with huber loss function
+            loss = nn.functional.smooth_l1_loss(action_q_values, targets)
+
+            # Gradient Descent
+            agent.optimizer.zero_grad()
+            loss.backward()
+            agent.optimizer.step()
+
+            # Update Target Network parameters
+            if step % TARGET_UPDATE_FREQ == 0:
+                # updates the target network params to be the same as the online network
+                agent.target_net.load_state_dict(agent.online_net.state_dict())
 
         # Logging to check
         if step % 100 == 0:

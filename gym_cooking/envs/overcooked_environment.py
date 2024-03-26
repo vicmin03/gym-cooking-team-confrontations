@@ -244,8 +244,8 @@ class OvercookedEnvironment(gym.Env):
         else:
             self.game = None
 
-        return self.create_obs()
-        # return copy.copy(self)
+        # return self.create_obs()
+        return copy.copy(self)
 
     def close(self):
         return
@@ -315,13 +315,13 @@ class OvercookedEnvironment(gym.Env):
         done = self.done()
         reward1, reward2 = self.reward()
 
-        obs2 = self.create_obs()
+        # obs2 = self.create_obs()
 
         info = {"t": self.t, "obs": new_obs,
                 "image_obs": image_obs,
                 "done": done, "termination_info": self.termination_info}
-        # return new_obs, reward1, reward2, done, info
-        return obs2, reward1, reward2, done, info
+        return new_obs, reward1, reward2, done, info
+        # return obs2, reward1, reward2, done, info
 
     def get_team1_score(self):
         return self.team1_score
@@ -381,6 +381,9 @@ class OvercookedEnvironment(gym.Env):
 
 
     def reward(self):
+        # get reward for each agent, then combine rewards for agents on the same team
+        # for 
+
        # rewards for each team depending if something was delivered
         r1, r2 = 0, 0
         score1, score2 = self.delivered()
@@ -734,107 +737,3 @@ class OvercookedEnvironment(gym.Env):
 
         # Save all distances under world as well.
         self.world.distances = self.distances
-
-
-
-    def _check_subtask_complete(self, subtask, team):
-        """Defining a goal state for subtask to check whether it has been done"""
-
-        if subtask is None:
-            return False
-
-        # Termination condition is when desired object is at a Deliver location.
-        # elif isinstance(subtask, Deliver):
-        #     self.cur_obj_count = len(
-        #             list(filter(lambda o: o in set(env.world.get_all_object_locs(
-        #                     self.subtask_action_obj)),
-        #             env.world.get_object_locs(self.goal_obj, is_held=False))))
-        #     self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-        #     self.is_goal_state = lambda h: self.has_more_obj(
-        #             len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
-        #             self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))
-
-        #     if self.removed_object is not None and self.removed_object == self.goal_obj:
-        #         self.is_subtask_complete = lambda w: self.has_more_obj(
-        #                 len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
-        #                 w.get_object_locs(self.goal_obj, is_held=False)))) + 1)
-        #     else:
-        #         self.is_subtask_complete = lambda w: self.has_more_obj(
-        #                 len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
-        #                 w.get_object_locs(obj=self.goal_obj, is_held=False)))))
-                
-        # for trash subtask, condition is met if the count of objects in the world is lowered
-        elif isinstance(subtask, recipe.Trash):
-
-            # gets count of all goal objects that haven't already been delivered
-            cur_obj_count = len(list(self.world.get_all_object_locs(self.goal_obj)))
-                # but can't trash delivered objects - remove delivered objects?
-            has_less_obj = lambda x: int(x) < self.cur_obj_count
-
-            if self.removed_object is not None and self.removed_object == self.goal_obj:
-                self.is_subtask_complete = lambda w: self.has_less_obj(
-                        len(w.get_all_object_locs(self.goal_obj)) + 1)
-            else:
-                self.is_subtask_complete = lambda w: self.has_less_obj(
-                        len(w.get_all_object_locs(self.goal_obj)))
-
-
-        # for steal subtask, condition is met if object is taken (number of objects last_held by other team -1s/ goal object last_held is this agent's team)
-        elif isinstance(subtask, Steal):
-            # all dishes - excluding those that have already been delivered
-
-            dishes = map(lambda d: env.world.get_object_at(d, None, find_held_objects = False), env.world.get_object_locs(obj=self.goal_obj, is_held=False))
-
-            self.cur_obj_count = len(list(filter(lambda a: (a.last_held != team), dishes)))
-            
-            self.is_goal_state = lambda h: self.has_less_obj(
-                    len(list(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj))))
-
-            self.has_less_obj = lambda x: int(x) < self.cur_obj_count
-
-            self.is_subtask_complete = lambda w: self.has_less_obj(
-                    len(list(filter(lambda a: (a.last_held != team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), w.get_object_locs(obj=self.goal_obj, is_held=False))))))
-  
-        # for hoard subtask, condition is met once a single object has been moved to its goal location
-            # goal complete if count of ingredients + 1 and it is placed on a counter
-        elif isinstance(subtask, Hoard):
-            # gets number of ingredients currently on counters
-            self.cur_obj_count = len(set(env.world.get_object_locs(self.goal_obj, is_held=False)))
-            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            
-            self.is_goal_state = lambda h: self.has_more_obj(
-                len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), set(
-                self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False))))))
-
-            # to be completed, need to have placed object on counter
-            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.goal_obj, is_held=False))))
-
-
-        elif isinstance(subtask, Chop):
-            self.cur_obj_count = len(env.world.get_all_object_locs(self.goal_obj))
-
-            # Goal state is reached when the number of desired objects has increased.
-            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            self.is_goal_state = lambda h: self.has_more_obj(
-                    len(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj)))
-            if self.removed_object is not None and self.removed_object == self.goal_obj:
-                self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(w.get_all_object_locs(self.goal_obj)) + 1)
-            else:
-                self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(w.get_all_object_locs(self.goal_obj)))
-
-        else:
-            # Get current count of desired objects.
-            
-            self.cur_obj_count = len(env.world.get_all_object_locs(self.goal_obj))
-            # Goal state is reached when the number of desired objects has increased.
-            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            self.is_goal_state = lambda h: self.has_more_obj(
-                    len(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj)))
-            if self.removed_object is not None and self.removed_object == self.goal_obj:
-                self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(w.get_all_object_locs(self.goal_obj)) + 1)
-            else:
-                self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(w.get_all_object_locs(self.goal_obj)))

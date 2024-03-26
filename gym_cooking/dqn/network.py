@@ -36,7 +36,7 @@ class Network(nn.Module):
     # determining what action to take
     def select_action(self, obs):
         # turn observation into a tensor (vector of each dimension value)
-        obs_t = torch.as_tensor(obs, dtype=torch.float32)
+        obs_t = torch.as_tensor(obs.create_obs(), dtype=torch.float32)
 
         # calculate the q values for actions from this observation 
             # need unsequeeze to get batch dimension?

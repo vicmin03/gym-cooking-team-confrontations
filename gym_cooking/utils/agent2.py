@@ -92,6 +92,7 @@ class RealAgent:
         return self.holding.full_name
 
     def select_action(self, obs):
+
         """Return best next action for this agent given observations."""
         sim_agent = list(filter(lambda x: x.name == self.name, obs.sim_agents))[0]
         self.location = sim_agent.location
@@ -109,16 +110,6 @@ class RealAgent:
         if self.new_subtask is None:
             self.refresh_subtasks(obs.world)
             print("Incomplete subtasks are:", self.incomplete_subtasks)
-            
-
-        # !!! if new_subtask is hoard subtask, need to get object first 
-        # if isinstance(self.new_subtask, recipe_utils.Hoard):
-        #     print(self.holding, "Is chopped: ", self.holding.is_chopped())
-        #     if self.holding is None or not self.holding.is_chopped():
-        #         self.new_subtask = recipe_utils.Chop(self.new_subtask.args[0])
-        #         print("Want to do hoard so first need to ", self.new_subtask)     
-        #         if recipe_utils.Hoard(self.new_subtask.args[0]) not in self.incomplete_subtasks:
-        #             self.incomplete_subtasks.append(recipe_utils.Hoard(self.new_subtask.args[0]))
             
         self.plan(copy.copy(obs))
         return self.action
@@ -370,6 +361,95 @@ class RealAgent:
             self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
             # self.is_subtask_complete = lambda w: len(list(filter(lambda b: b is not None and b.last_held == self.team, map(lambda a: w.get_objects_at(a)[0], env.world.get_all_object_locs(obj=self.goal_obj))))) > self.cur_obj_count
 
+
+    def check_subtask_complete(self, subtask, env):
+        # Determine desired objects.
+        start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=subtask)
+        subtask_action_object = nav_utils.get_subtask_action_obj(subtask=subtask, team=self.team)
+
+        has_more_obj = lambda x: int(x) > self.cur_obj_count
+        has_less_obj = lambda x: int(x) < cur_obj_count
+
+        # Define termination conditions for agent subtask.
+        # For Deliver subtask, desired object should be at a Deliver location.
+        if isinstance(subtask, Deliver):
+            cur_obj_count = len(list(
+                filter(lambda o: o in set(env.world.get_all_object_locs(subtask_action_object)),
+                env.world.get_object_locs(obj=goal_obj, is_held=False))))
+
+            return lambda w: has_more_obj(
+                    len(list(filter(lambda o: o in
+                set(env.world.get_all_object_locs(obj=subtask_action_object)),
+                w.get_object_locs(obj=goal_obj, is_held=False)))))
+            
+        # For Trash subtask, remove object from world so lower number of goal objects
+        elif isinstance(subtask, Trash):
+
+            # gets count of all goal objects that haven't already been delivered
+            cur_obj_count = len(list(env.world.get_all_object_locs(self.goal_obj)))
+                # but can't trash delivered objects - remove delivered objects?
+
+
+            return lambda w: has_less_obj(
+                    len(w.get_all_object_locs(goal_obj)))
+
+        elif isinstance(subtask, Hoard):
+            
+            # gets number of ingredients currently in world (only those on counters, not including multiples stocked at spawn)
+            cur_obj_count = len(set(env.world.get_object_locs(goal_obj, is_held=False)))
+            print("Current count:", cur_obj_count)
+
+            has_more_obj = lambda x: int(x) > cur_obj_count
+            
+
+            # self.is_subtask_complete = lambda w: self.has_more_obj(
+            #     len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)),
+            #     w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+
+            return lambda w: has_more_obj(len(set(w.get_object_locs(goal_obj, is_held=False))))
+
+
+        elif isinstance(subtask, Steal):
+            # all dishes - excluding those that have already been delivered
+            dishes = map(lambda d: env.world.get_object_at(d, None, find_held_objects = False), env.world.get_object_locs(obj=self.goal_obj, is_held=False))
+
+            cur_obj_count = len(list(filter(lambda a: a.last_held != self.team, dishes)))
+
+            has_less_obj = lambda x: int(x) < cur_obj_count
+            # if self.removed_object is not None and self.removed_object == self.goal_obj:
+            #     self.is_subtask_complete = lambda w: self.has_less_obj(
+            #             len(w.get_all_object_locs(self.goal_obj)) + 1)
+            # else:
+            return lambda w: self.has_less_obj(
+                   len(list(filter(lambda a: (a.last_held != self.team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), w.get_object_locs(obj=self.goal_obj, is_held=False))))))
+
+        # Otherwise, for other subtasks, check based on # of objects attributed to your team
+        else:
+            cur_obj_count = len(env.world.get_all_object_locs(obj=goal_obj))
+
+            # Goal state is reached when the number of desired objects has increased.
+            return lambda w: len(w.get_all_object_locs(obj=goal_obj)) > cur_obj_count
+
+
+    def get_reward(self, obs):
+        # get reward for this agent's action for each timestep
+        print("Here is all the subtasks I could do: ", self.get_subtasks())
+        for subtask in self.get_subtasks():
+            if self.check_subtask_complete(subtask, obs):
+                if isinstance(subtask, recipe_utils.Chop):
+                    return 2
+                elif isinstance(subtask, recipe_utils.Merge):
+                    return 3
+                elif isinstance(subtask, recipe_utils.Hoard):
+                    return 4
+                # elif isinstance(subtask, recipe_utils.Deliver):
+                #     return 15
+                # elif isinstance(subtask, recipe_utils.Trash):
+                #     return -1
+
+
+
+
 class SimAgent:
     """Simulation agent used in the environment object."""
 
@@ -434,3 +514,5 @@ class SimAgent:
         
     def get_location(self):
         return self.location
+
+    
