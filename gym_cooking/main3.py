@@ -169,7 +169,7 @@ if __name__ == '__main__':
             action_arr.append(action)
 
         # get observation from performing actions
-        new_obs, reward1, reward2, done, info = env.step(action_dict)
+        new_obs, reward1, reward2, done, info = env.step(action_dict, dqn_agents)
 
         # save transition as record in replay buffer
         # transition = (obs.create_obs(), action, reward1, reward2, done, new_obs.create_obs())
@@ -204,7 +204,7 @@ if __name__ == '__main__':
             action_arr.append(action)
             # get + save observation from performing action
                 # done flag indicates whether a terminal state or not
-        new_obs, reward1, reward2, done, info = env.step(action_dict)
+        new_obs, reward1, reward2, done, info = env.step(action_dict, dqn_agents)
 
         
         # actionIndex = env.possible_actions.index((action[0], action[1]))
@@ -287,16 +287,16 @@ if __name__ == '__main__':
                 agent.target_net.load_state_dict(agent.online_net.state_dict())
 
         # Logging to check
-        if step % 100 == 0:
+        if step % 50 == 0:
             print()
             print("Step", step)
             sum1 = 0
             sum2 = 0
             for reward in reward_buffer:
-                
                 sum1 += reward[0]
                 sum2 += reward[1]
                 print("reward for team 1 is", sum1)
+                print("reward for team 2 is", sum2)
                 print("length of ", reward_buffer, "is, ", len(reward_buffer))
             # print("Average Reward for team 1: ", np.mean(reward[0] for reward in reward_buffer))
             print("Average Reward for team 1: ", sum1/len(reward_buffer))

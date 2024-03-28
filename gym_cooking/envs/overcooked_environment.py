@@ -277,7 +277,7 @@ class OvercookedEnvironment(gym.Env):
 
         return obs
 
-    def step(self, action_dict):
+    def step(self, action_dict, agents):
         # Track internal environment info.
         self.t += 1
         print("===============================")
@@ -301,7 +301,7 @@ class OvercookedEnvironment(gym.Env):
         #     obs2.append(sim_agent.location)
 
         # Visualize.
-        self.display()
+        # self.display()
         # self.print_agents()
         if self.arglist.record:
             self.game.save_image_obs(self.t)
@@ -313,7 +313,8 @@ class OvercookedEnvironment(gym.Env):
             image_obs = self.game.get_image_obs()
 
         done = self.done()
-        reward1, reward2 = self.reward()
+
+        reward1, reward2 = self.reward(self.obs_tm1, new_obs, agents)
 
         # obs2 = self.create_obs()
 
@@ -366,53 +367,24 @@ class OvercookedEnvironment(gym.Env):
         return delivered_1 > self.delivered1, delivered_2 > self.delivered2
             
     
-    def done_tasks(self):
-        rewards = [0, 0]
-        for subtask in self.all_subtasks:
-            # TO DO: split into 2 networks
-            if self.check_subtask_complete(subtask, team):
-                if isinstance(subtask, recipe.Chop):
-                    rewards[team-1] = rewards[team-1] + 1
-                elif isinstance(subtask, recipe.Chop):
-                    r1 
-
-        return r1, r2
-            
-
-
-    def reward(self):
-        # get reward for each agent, then combine rewards for agents on the same team
-        # for 
-
+    def reward(self, old_obs, new_obs, agents):
        # rewards for each team depending if something was delivered
         r1, r2 = 0, 0
         score1, score2 = self.delivered()
         if score1:    # if team1 delivered, increases their score
-            r1 += 1
-            r2 += -1
+            r1 += 10
+            r2 += -10
         elif score2:     # if team2 delivered, increases their score
-            r1 += -1
-            r2 += 1
+            r1 += -10
+            r2 += 10
 
+        # get reward for each agent completing a subtask, then combine rewards for agents on the same team
+        for agent in agents:
+            if agent.team == 1:
+                r1 += agent.get_reward(old_obs, new_obs)
+            elif agent.team == 2:
+                r2 += agent.get_reward(old_obs, new_obs)
 
-        # reward for doing diff actions - picking something up, chopping something, merging something, 
-            # reward based on completing a subtask???
-                # bd assignment of subtasks?
-                # random assignment of subtasks?
-        
-
-
-        # 0.1 if hoarded one item
-        # 0.8 if stole another team's dish, -0.8 if stolen from them
-        # r1 += 0.8 if len(objects belonging to team1) + 1
-
-        # distance to goal location? B_loc????/
-            # call AB_locs for every agent and their subtask
-            # calculate distance between their current location + goal + are they holding goal obj?
- 
-        # if something got trashed 
-            # r1 -= 0.5
-            # r2 -= 0.5 ??????
         
         # return two rewards (team1, team2)
         return r1, r2
