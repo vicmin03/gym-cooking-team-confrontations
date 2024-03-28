@@ -195,9 +195,8 @@ class OvercookedEnvironment(gym.Env):
         self.world.height = y
         self.world.perimeter = 2*(self.world.width + self.world.height)
 
-        self.observation_space = []
-        for agent in self.sim_agents:
-            self.observation_space.append(Box(low=0, high=2, shape=(self.world.height, self.world.width, 10), dtype=np.int32))
+        # self.observation_space = []
+        self.observation_space = (Box(low=0, high=2, shape=(self.world.height, self.world.width), dtype=np.int32))
 
     # def create_spaces(self):
     #     # observation space - locations of special gridsquares (blue, red, trash), objects and agents in the world

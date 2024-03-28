@@ -172,10 +172,8 @@ if __name__ == '__main__':
         new_obs, reward1, reward2, done, info = env.step(action_dict, dqn_agents)
 
         # save transition as record in replay buffer
-        # transition = (obs.create_obs(), action, reward1, reward2, done, new_obs.create_obs())
         transition = (obs.create_obs(), np.asarray(action_arr), reward1, reward2, done, new_obs.create_obs())
-        print("Hey these are the actions chosen", np.asarray(action_arr))
-        print("For agent 1:", action_arr[0], "For agent 2: ", action_arr[1])
+    
         replay_buffer.append(transition)
         obs = new_obs
 
@@ -237,6 +235,8 @@ if __name__ == '__main__':
         dones = np.asarray([t[4] for t in transitions])
         new_observations = np.asarray([t[5] for t in transitions])
 
+        print("The length of observations passed in is", len(observations))
+        print("Example:", observations[0])
 
         # turning into tensors
         observations_t = T.as_tensor(observations, dtype=T.float32) 

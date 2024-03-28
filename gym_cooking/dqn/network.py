@@ -12,10 +12,9 @@ class Network(nn.Module):
         super().__init__()
         
         # number of inputs to nn = product of features in observation space
-        in_features = 0
-        for i in env.observation_space:
-            for x in i.shape:
-                in_features += x
+        in_features = 1
+        for i in env.observation_space.shape:
+            in_features *= i
         print(in_features, " = number of input features")
         # in_features = int(np.prod(sum(x for x in features)))
         # in_features = 
