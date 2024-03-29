@@ -14,7 +14,6 @@ from collections import namedtuple
 import gym
 from cooking_maddpg.maddpg import MADDPG
 from cooking_maddpg.experience_replay_buffer import ExperienceReplayBuffer
-from make_env import make_env
 import gym
 
 def parse_arguments():

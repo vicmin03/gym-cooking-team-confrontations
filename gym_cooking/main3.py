@@ -15,7 +15,6 @@ import itertools
 import gym
 from dqn.network import Network
 from dqn.replay_buffer import ReplayBuffer
-from make_env import make_env
 import gym
 import torch as T
 from torch import nn
@@ -119,44 +118,8 @@ def initialize_agents(arglist, env):
     return real_agents
 
 
-# --- Parameters ---------------------------------
-
-GAMMA = 0.99     # the discount rate
-BATCH_SIZE = 32    # no of samples we sample from the memory buffer
-BUFFER_SIZE = 50000     # the max no. of samples stores in the buffer before overriding old transitions
-# MIN_REPLAY_SIZE = 1000      # the no. of transitions we need in repay buffer before training can begin
-MIN_REPLAY_SIZE = 33
-EPSILON_START = 1.0
-EPSILON_END = 0.02
-EPSILON_DECAY = 10000   # epsilon decreases from start_val to end_val over this many steps
-TARGET_UPDATE_FREQ = 1000   # how many steps before target network params are updated from online parameters
-
-if __name__ == '__main__':
-    arglist = parse_arguments()
-
-    env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
-    obs = env.reset()
-
-    dqn_agents = initialize_agents(arglist=arglist, env=env)
-
-    # replay buffer to keep track of action history and transitions
+def initialise_buffer(env, obs, dqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE):
     replay_buffer = deque(maxlen=BUFFER_SIZE)
-    
-    # reward buffer keeps history of rewards, as tuples for rewards of each team (team1_reward, team2_reward)
-    # reward_buffer = deque([0,0], maxlen=100)
-    reward_buffer = deque(maxlen=100)
-
-    team1_reward = 0
-    team2_reward = 0
-
-    # set up online and target networks
-    # online_net = Network(env)
-    # target_net = Network(env)
-
-    # loads the parameters of the online network to the target network
-    for agent in dqn_agents:
-        agent.target_net.load_state_dict(agent.online_net.state_dict())
-
 
     # Initialise replay buffer by randomly choosing actions in the environment and saving rewards
     for i in range (MIN_REPLAY_SIZE):
@@ -180,12 +143,113 @@ if __name__ == '__main__':
         if done:
             obs = env.reset()
 
+    return replay_buffer
 
-    # training loop
+
+# def train(env, agents, gamma, batch_size, buffer_size, min_replay_size, epsilon_start, epsilon_end, decay, target_update_freq):
+
+def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ):
+    # samples BATCH_SIZE number of transitions from the replay buffer into a list 
+    transitions = random.sample(replay_buffer, BATCH_SIZE)
+
+    # extract each part from the transition tuples into their own np array
+    observations = np.asarray([t[0] for t in transitions])
+    actions = np.asarray([t[1] for t in transitions])
+    rewards1 = np.asarray([t[2] for t in transitions])
+    rewards2 = np.asarray([t[3] for t in transitions])
+    dones = np.asarray([t[4] for t in transitions])
+    new_observations = np.asarray([t[5] for t in transitions])
+
+    # turning into tensors
+    observations_t = T.as_tensor(observations, dtype=T.float32) 
+    actions_t = T.as_tensor(actions, dtype=T.int64).unsqueeze(-1)
+    rewards1_t = T.as_tensor(rewards1, dtype=T.float32).unsqueeze(-1)
+    rewards2_t = T.as_tensor(rewards2, dtype=T.float32).unsqueeze(-1)
+    dones_t = T.as_tensor(dones, dtype=T.float32).unsqueeze(-1)
+    new_observations_t = T.as_tensor(new_observations, dtype=T.float32)
+
+    # Compute Targets
+        # gets a set of q values for each observation, with q as the first dimension
+    
+    for i in range (0, len(dqn_agents)):
+        agent = dqn_agents[i]
+        target_q_values = agent.target_net(new_observations_t)
+            # max returns a tuple with (highest_val, index)
+        max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
+
+        # choose to use the rewards tensor of their own team only 
+        if agent.team == 1:
+            targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
+        elif agent.team == 2:
+            targets = rewards2_t * GAMMA * (1- dones_t) * max_target_q_values
+
+        # Compute Loss
+            # get expected q values from the online nn based on the given observations
+        q_values = agent.online_net(observations_t)
+
+        # get all the actions taken by this agent
+        my_actions = [action[i] for action in actions]
+        my_actions_t = T.as_tensor(my_actions, dtype=T.int64).unsqueeze(-1)
+
+        # this applies the index of the actions taken by the agent (my_actions_t) to get the q_value for that action
+        action_q_values = T.gather(input=q_values, dim=1, index=my_actions_t)
+
+        # compute the loss with huber loss function
+        loss = nn.functional.smooth_l1_loss(action_q_values, targets)
+
+        # Gradient Descent
+        agent.optimizer.zero_grad()
+        loss.backward()
+        agent.optimizer.step()
+
+        # Update Target Network parameters
+        if step % TARGET_UPDATE_FREQ == 0:
+            # updates the target network params to be the same as the online network
+            agent.target_net.load_state_dict(agent.online_net.state_dict())
+
+
+# --- Parameters ---------------------------------
+
+GAMMA = 0.99     # the discount rate
+BATCH_SIZE = 32    # no of samples we sample from the memory buffer
+BUFFER_SIZE = 50000     # the max no. of samples stores in the buffer before overriding old transitions
+# MIN_REPLAY_SIZE = 1000      # the no. of transitions we need in repay buffer before training can begin
+MIN_REPLAY_SIZE = 33
+EPSILON_START = 1.0
+EPSILON_END = 0.02
+EPSILON_DECAY = 10000   # epsilon decreases from start_val to end_val over this many steps
+TARGET_UPDATE_FREQ = 1000   # how many steps before target network params are updated from online parameters
+
+if __name__ == '__main__':
+    arglist = parse_arguments()
+
+    env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
+    obs = env.reset()
+
+    # ---- Initialisation of agents, networks and buffers ------
+
+    dqn_agents = initialize_agents(arglist=arglist, env=env)
+
+    # loads the parameters of the online network to the target network
+    for agent in dqn_agents:
+        agent.target_net.load_state_dict(agent.online_net.state_dict())
+
+    # replay buffer to keep track of action history and transitions
+        # to start, fill replay buffer with random observations
+    replay_buffer = initialise_buffer(env, obs, dqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE)
+
+    # reward buffer keeps history of rewards, as tuples for rewards of each team (team1_reward, team2_reward)
+    reward_buffer = deque(maxlen=100)
+
+    team1_reward = 0
+    team2_reward = 0
+
+    # ---- Training Loop --------
     for step in itertools.count():
         # holds which action each agent takes
         action_dict = {}
         action_arr = []
+
         # this reduces epsilon based on what step we're on - decays from start to end value
         epsilon = np.interp(step, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 
@@ -204,17 +268,15 @@ if __name__ == '__main__':
                 # done flag indicates whether a terminal state or not
         new_obs, reward1, reward2, done, info = env.step(action_dict, dqn_agents)
 
-        
-        # actionIndex = env.possible_actions.index((action[0], action[1]))
-        # transition = (obs.create_obs(), action, reward1, reward2, done, new_obs.create_obs())
+        # saves new transition and observations in replay buffer
         transition = (obs.create_obs(), np.asarray(action_arr), reward1, reward2, done, new_obs.create_obs())
         replay_buffer.append(transition)
         obs = new_obs
         
-        
         team1_reward += reward1
         team2_reward += reward2
 
+        # save the rewards for each team in reward buffer
         reward_buffer.append((team1_reward, team2_reward))  
         team1_reward = 0
         team2_reward = 0
@@ -222,71 +284,13 @@ if __name__ == '__main__':
         if done:
             obs = env.reset()
 
-
-        # Start Gradient Step ----------
-        # samples BATCH_SIZE number of transitions from the replay buffer into a list 
-        transitions = random.sample(replay_buffer, BATCH_SIZE)
-
-        # extract each part from the transition tuples into their own np array
-        observations = np.asarray([t[0] for t in transitions])
-        actions = np.asarray([t[1] for t in transitions])
-        rewards1 = np.asarray([t[2] for t in transitions])
-        rewards2 = np.asarray([t[3] for t in transitions])
-        dones = np.asarray([t[4] for t in transitions])
-        new_observations = np.asarray([t[5] for t in transitions])
-
-        print("The length of observations passed in is", len(observations))
-        print("Example:", observations[0])
-
-        # turning into tensors
-        observations_t = T.as_tensor(observations, dtype=T.float32) 
-        actions_t = T.as_tensor(actions, dtype=T.int64).unsqueeze(-1)
-        rewards1_t = T.as_tensor(rewards1, dtype=T.float32).unsqueeze(-1)
-        rewards2_t = T.as_tensor(rewards2, dtype=T.float32).unsqueeze(-1)
-        dones_t = T.as_tensor(dones, dtype=T.float32).unsqueeze(-1)
-        new_observations_t = T.as_tensor(new_observations, dtype=T.float32)
-
-        # Compute Targets
-            # gets a set of q values for each observation, with q as the first dimension
-        
-        for i in range (0, len(dqn_agents)):
-            agent = dqn_agents[i]
-            target_q_values = agent.target_net(new_observations_t)
-                # max returns a tuple with (highest_val, index)
-            max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
+        # ---- Gradient Step ----------
+            # parameters of networks are updated based on training
+        update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ)
 
 
-            # choose to use the rewards tensor of their own team only 
-            if agent.team == 1:
-                targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
-            elif agent.team == 2:
-                targets = rewards2_t * GAMMA * (1- dones_t) * max_target_q_values
 
-            # Compute Loss
-                # get expected q values from the online nn based on the given observations
-            q_values = agent.online_net(observations_t)
-
-            # get all the actions taken by this agent
-            my_actions = [action[i] for action in actions]
-            my_actions_t = T.as_tensor(my_actions, dtype=T.int64).unsqueeze(-1)
-
-            # this applies the index of the actions taken by the agent (my_actions_t) to get the q_value for that action
-            action_q_values = T.gather(input=q_values, dim=1, index=my_actions_t)
-
-            # compute the loss with huber loss function
-            loss = nn.functional.smooth_l1_loss(action_q_values, targets)
-
-            # Gradient Descent
-            agent.optimizer.zero_grad()
-            loss.backward()
-            agent.optimizer.step()
-
-            # Update Target Network parameters
-            if step % TARGET_UPDATE_FREQ == 0:
-                # updates the target network params to be the same as the online network
-                agent.target_net.load_state_dict(agent.online_net.state_dict())
-
-        # Logging to check
+        # Logging 
         if step % 50 == 0:
             print()
             print("Step", step)
