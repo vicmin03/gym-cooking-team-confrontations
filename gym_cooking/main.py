@@ -105,15 +105,15 @@ def initialize_agents(arglist):
                     real_agents.append(real_agent)
 
             # phase 5: read in agent locations when not in teams
-            elif phase == 5:
-                if len(real_agents) < arglist.num_agents:
-                    loc = line.split(' ')
-                    real_agent = RealAgent(
-                        arglist=arglist,
-                        name='agent-' + str(len(real_agents) + 1),
-                        id_color=COLORS[len(real_agents)],
-                        recipes=recipes)
-                    real_agents.append(real_agent)
+            # elif phase == 5:
+            #     if len(real_agents) < arglist.num_agents:
+            #         loc = line.split(' ')
+            #         real_agent = RealAgent(
+            #             arglist=arglist,
+            #             name='agent-' + str(len(real_agents) + 1),
+            #             id_color=COLORS[len(real_agents)],
+            #             recipes=recipes)
+            #         real_agents.append(real_agent)
 
     return real_agents
 
@@ -136,22 +136,17 @@ def main_loop(arglist):
             action = agent.select_action(obs=obs)
             action_dict[agent.name] = action
 
-        obs, reward1, reward2, done, info = env.step(action_dict=action_dict)
-
-        state = env.get_repr()
-        print("HERE: the state is ", state)
+        obs, reward1, reward2, done, info = env.step(action_dict=action_dict, agents=real_agents)
 
         # Agents
         for agent in real_agents:
-            agent.refresh_subtasks(world=env.world)
-
-        state = env.get_repr()
-        print("HERE: the state is ", state)
+            # agent.refresh_subtasks(world=env.world)
+            agent.refresh_subtasks(env=env)
 
         # Saving info
-        bag.add_status(cur_time=info['t'], real_agents=real_agents)
+        # bag.add_status(cur_time=info['t'], real_agents=real_agents)
 
-    print("\n TERMINATED AFTER 100 STEPS: Team 1 score:", env.get_team1_score(), "Team 2 score: ", env.get_team2_score())
+    print("\n TERMINATED AFTER 70 STEPS: Team 1 score:", env.get_team1_score(), "Team 2 score: ", env.get_team2_score())
 
     # Saving final information before saving pkl file
     bag.set_collisions(collisions=env.collisions)

@@ -58,11 +58,19 @@ class RealAgent:
         else:
             self.priors = 'spatial'
 
+        # Navigation planner.
+        self.planner = E2E_BRTDP(
+                alpha=arglist.alpha,
+                tau=arglist.tau,
+                cap=arglist.cap,
+                main_cap=arglist.main_cap)
+
         # DQN Networks
         self.online_net = online_net
         self.target_net = target_net
 
         self.optimizer = T.optim.Adam(online_net.parameters(), lr=5e-4)
+
 
     def __str__(self):
         return (self.name[-1], self.color)
@@ -92,28 +100,31 @@ class RealAgent:
             return 'None'
         return self.holding.full_name
 
-    # def select_action(self, obs):
+    def select_action(self, obs):
 
-    #     """Return best next action for this agent given observations."""
-    #     sim_agent = list(filter(lambda x: x.name == self.name, obs.sim_agents))[0]
-    #     self.location = sim_agent.location
-    #     self.holding = sim_agent.holding
-    #     self.action = sim_agent.action
+        """Return best next action for this agent given observations."""
+        sim_agent = list(filter(lambda x: x.name == self.name, obs.sim_agents))[0]
+        self.location = sim_agent.location
+        self.holding = sim_agent.holding
+        self.action = sim_agent.action
 
-    #     if obs.t == 0:
-    #         self.setup_subtasks(env=obs)
+        if obs.t == 0:
+            self.setup_subtasks(env=obs)
 
-    #     # Select subtask based on Bayesian Delegation.
-    #     self.update_subtasks(env=obs)
-    #     self.new_subtask, self.new_subtask_agent_names = self.delegator.select_subtask(
-    #         agent_name=self.name)
-        
-    #     if self.new_subtask is None:
-    #         self.refresh_subtasks(obs.world)
-    #         print("Incomplete subtasks are:", self.incomplete_subtasks)
+        if self.model_type == 'madqn':
+            self.action = obs.possible_actions[self.online_net.select_action(obs)]
+        else:
+            # Select subtask based on Bayesian Delegation.
+            self.update_subtasks(env=obs)
+            self.new_subtask, self.new_subtask_agent_names = self.delegator.select_subtask(
+                agent_name=self.name)
             
-    #     self.plan(copy.copy(obs))
-    #     return self.action
+            if self.new_subtask is None:
+                self.refresh_subtasks(obs)
+                print("Incomplete subtasks are:", self.incomplete_subtasks)
+
+            self.plan(copy.copy(obs))
+        return self.action
 
     def get_subtasks(self, world):
         """Return different subtask permutations for recipes."""
@@ -159,17 +170,17 @@ class RealAgent:
         self.subtask_agent_names = []
         self.subtask_complete = False
 
-    def refresh_subtasks(self, world):
+    def refresh_subtasks(self, env):
         """Refresh subtasks---relevant for Bayesian Delegation."""
         # Check whether subtask is complete.
         self.subtask_complete = False
         if self.subtask is None or len(self.subtask_agent_names) == 0:
             print("{} has no subtask".format((self.name, self.color)))
             return
-        self.subtask_complete = self.is_subtask_complete(world)
+        self.subtask_complete = self.is_subtask_complete(env.world)
         print("{} done with {} according to planner: {}\nplanner has subtask {} with subtask object {}".format(
             (self.name, self.color),
-            self.subtask, self.is_subtask_complete(world),
+            self.subtask, self.is_subtask_complete(env.world),
             self.planner.subtask, self.planner.goal_obj))
 
         # Refresh for incomplete subtasks.
@@ -177,6 +188,9 @@ class RealAgent:
             if self.subtask in self.incomplete_subtasks:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
+
+                # if agent completed a task, return a reward
+                self.reward = self.compute_reward(self.subtask)
             # if no more subtasks and there is stock left in the world, re-add chop-merge-deliver subtasks
             if len(self.incomplete_subtasks) == 1:
 
@@ -400,26 +414,101 @@ class RealAgent:
             # Goal state is reached when the number of desired objects has increased.
             return old_obj_count < len(new_obs.world.get_all_object_locs(obj=goal_obj))
 
+    # get reward for agents using BD - get the Q value of taking state and action
+    # def get_reward(self, obs, action):
+    #     return self.planner.Q(obs, action, value_f=self.planner.v_l)
+
+    def get_reward_for_subtask(self, subtask, new_obs):
+         # give reward for moving towards the goal location and holding the correct obj
+        start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=subtask)
+        subtask_action_obj = nav_utils.get_subtask_action_obj(subtask=subtask, team=self.team)
+
+        new_dist = new_obs.get_lower_bound_for_subtask_given_objs(
+                subtask=subtask,
+                subtask_agent_names=[self.name],
+                start_obj=start_obj,
+                goal_obj=goal_obj,
+                subtask_action_obj=subtask_action_obj)
+        if new_dist > 0:
+            return 10/new_dist
+        else:
+            return 6
+        return new_dist
+
 
     def get_reward(self, old_obs, new_obs):
         # get reward for this agent's action for each timestep
-        if len(self.all_subtasks) == 0:
-            self.all_subtasks = self.get_subtasks(old_obs.world)
-        for subtask in self.all_subtasks:
-            if self.check_subtask_complete(subtask, old_obs, new_obs):
+            # if completed their subtask, give reward
+        if self.subtask is not None:
+            if self.check_subtask_complete(self.subtask, old_obs, new_obs):
                 if isinstance(subtask, recipe_utils.Chop):
                     return 5
                 elif isinstance(subtask, recipe_utils.Merge):
                     return 5
                 elif isinstance(subtask, recipe_utils.Hoard):
                     return 4
-                # elif isinstance(subtask, recipe_utils.Deliver):
-                #     return 15
+                elif isinstance(subtask, recipe_utils.Deliver):
+                    return 15
                 elif isinstance(subtask, recipe_utils.Trash):
                     return -2
-        return 0
+                
+            else:
+                print("My subtask is:", self.subtask)
+                # give reward for moving towards the goal location and holding the correct obj
+                start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=self.subtask)
+                subtask_action_obj = nav_utils.get_subtask_action_obj(subtask=self.subtask, team=self.team)
 
+                # new_dist = new_obs.get_lower_bound_for_subtask_given_objs(
+                #         subtask=subtask,
+                #         subtask_agent_names=[self.name],
+                #         start_obj=start_obj,
+                #         goal_obj=goal_obj,
+                #         subtask_action_obj=subtask_action_obj)
+                
+                A_locs, B_locs = new_obs.get_AB_locs_given_objs(
+                    subtask=self.subtask,
+                    agent = self.name,
+                    subtask_agent_names=[self.name],
+                    start_obj=start_obj,
+                    goal_obj=goal_obj,
+                    subtask_action_obj=subtask_action_obj)
+                # if new_dist > 0:
+                #     return 3/new_dist
+                # else:
+                #     return 4
 
+                print("Hey ", A_locs, "to", B_locs)
+                return 2
+
+        # for madqn agents not using subtasks
+        else:
+            sim_agent = list(filter(lambda x: x.name == self.name, new_obs.sim_agents))[0]
+            self.location = sim_agent.location
+            self.holding = sim_agent.holding
+            self.action = sim_agent.action
+
+            # the rewards for being close to completing whatever subtask - get the highest reward
+            subtask_rewards = []
+
+            if len(self.all_subtasks) == 0:
+                self.all_subtasks = self.get_subtasks(old_obs.world)
+            for subtask in self.all_subtasks:
+                if self.check_subtask_complete(subtask, old_obs, new_obs):
+                    if isinstance(subtask, recipe_utils.Chop):
+                        return 5
+                    elif isinstance(subtask, recipe_utils.Merge):
+                        return 5
+                    elif isinstance(subtask, recipe_utils.Hoard):
+                        return 4
+                    # elif isinstance(subtask, recipe_utils.Deliver):
+                    #     return 15
+                    elif isinstance(subtask, recipe_utils.Trash):
+                        return -2
+            
+                subtask_rewards.append(self.get_reward_for_subtask(subtask, new_obs))
+            print(subtask_rewards)
+            return max(subtask_rewards)
+            return 0
 
 
 class SimAgent:

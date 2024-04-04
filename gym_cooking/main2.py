@@ -68,35 +68,30 @@ score2_history = []
 evaluate = False      # indicates whether just training or using to evaluate results
 best_score = 0
 
-# util function needed to combine observations of state, action
-def obs_list_to_state_vector(observation):
-    state = np.array([])
-    for obs in observation:
-        state = np.concatenate([state, obs])
-    return state
 
 def train(env, maddpg_agents, buffer, NUM_EPS, MAX_STEPS, batch_size, gamma, tau):
     num_agents = len(maddpg_agents)
 
     for i in range(NUM_EPS):
-        obs = env.reset()
+        obs = env.reset().create_obs()
         score = 0
         done = [False]*num_agents
         episode_step = 0
         while not any(done):
-
-            actions = []
+            # holds which action each agent takes
+            action_dict = {}
+            action_arr = []
             for agent in maddpg_agents:
-                actions.append(agent.select_action(obs.encode_obs(maddpg_agents)))
-            obs_, reward1, reward2, done, info = env.step(actions)
+                action = agent.online_net.select_action(obs)
+                action_dict[agent.name] = env.possible_actions[action]
+                action_arr.append(action)
 
-            state = obs_list_to_state_vector(obs)
-            state_ = obs_list_to_state_vector(obs_)
+            new_obs, reward1, reward2, done, info = env.step(action_dict, maddpg_agents)
+
+            transition = (obs.create_obs(), np.asarray(action_arr), reward1, reward2, done, new_obs.create_obs())
 
             if episode_step >= MAX_STEPS:
                 done = [True]*num_agents
-
-            buffer.store_transition(obs, state, actions, reward1, reward2, obs_, state_, done)
 
             if total_steps % 100 == 0 and not evaluate:
                 maddpg_agents.learn(buffer)

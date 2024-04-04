@@ -100,16 +100,6 @@ class E2E_BRTDP:
 
         # Joint
         else:
-            # agent_locs = []
-            # for agent in subtask_agents:
-            #     sim_state = copy.copy(state)
-            #     sim_agent_i = list(filter(lambda a: a.name == agent.name, sim_state.sim_agents))[0]
-            #     sim_agent_i.action = action
-            #     interact(agent=sim_agent_i, world=sim_state.world)
-            #     agent_locs.append(sim_agent_i.location)
-                # assert sim_agent_i.location not in agent_locs, 'action {} led to state {}'.format(action, sim_state.get_repr())
-
-
             agent_1, agent_2 = subtask_agents
             sim_state = copy.copy(state)
             sim_agent_1 = list(filter(lambda a: a.name == agent_1.name, sim_state.sim_agents))[0]
@@ -158,20 +148,7 @@ class E2E_BRTDP:
                         agent2_action=agent2)
                     if all(execute):
                         output_actions.append(va)
-            # agent_1, agent_2 = subtask_agents[0:1]
-            # valid_actions = list(product(
-            #     nav_utils.get_single_actions(env=state, agent=agent_1),
-            #     nav_utils.get_single_actions(env=state, agent=agent_2)))
-            # # Only consider action to be valid if agents do not collide.
-            # for va in valid_actions:
-            #     agent1, agent2 = va
-            #     execute = state.is_collision(
-            #             agent1_loc=agent_1.location,
-            #             agent2_loc=agent_2.location,
-            #             agent1_action=agent1,
-            #             agent2_action=agent2)
-            #     if all(execute):
-            #         output_actions.append(va)
+
         return output_actions
 
 
@@ -211,6 +188,7 @@ class E2E_BRTDP:
                 self.Q(state=modified_state, action=a, value_f=self.v_u)
                 for a in actions])
             self.v_u[(modified_state_repr, self.subtask)] = new_upper
+            
 
             action_index = argmin([
                 self.Q(state=modified_state, action=a, value_f=self.v_l)
@@ -262,8 +240,8 @@ class E2E_BRTDP:
                 self.start.update_display()
                 self.start.display()
                 self.start.print_agents()
-                # print('old: upper {}, lower {}'.format(upper, lower))
-                # print('new: upper {}, lower {}'.format(new_upper, new_lower))
+                print('old: upper {}, lower {}'.format(upper, lower))
+                print('new: upper {}, lower {}'.format(new_upper, new_lower))
             diff = new_diff
             upper = new_upper
             lower = new_lower
@@ -380,16 +358,27 @@ class E2E_BRTDP:
         # for hoard subtask, condition is met once a single object has been moved to its goal location
             # goal complete if count of ingredients + 1 and it is placed on a counter
         elif isinstance(subtask, Hoard):
-            # gets number of ingredients currently on counters
-            self.cur_obj_count = len(set(env.world.get_object_locs(self.goal_obj, is_held=False)))
-            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            # finds locations of items on counters that were last held by this team
+            ingredient_locs= filter(lambda a: env.world.get_last_held_by_at(a) == team, set(env.world.get_object_locs(self.goal_obj, is_held=False)))
             
-            self.is_goal_state = lambda h: self.has_more_obj(
-                len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), set(
-                self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False))))))
+            self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), ingredient_locs)))
+            print("Currently", self.cur_obj_count, "at correct locations")
+            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
 
-            # to be completed, need to have placed object on counter
-            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.goal_obj, is_held=False))))
+            self.is_goal_state = lambda h: self.has_more_obj(len(list(filter
+                (lambda o: o in set(self.repr_to_env_dict[h].world.get_all_object_locs(self.subtask_action_obj)), 
+                filter(lambda a: self.repr_to_env_dict[h].world.get_last_held_by_at(a) == team, set(self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))))
+
+            if self.removed_object is not None and self.removed_object == self.goal_obj:
+                self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
+                    (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
+                    filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False))))))+1)
+            else:
+                self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
+                    (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
+                    filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False)))))))
+
+            # self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter(lambda a: (a.last_held != team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), set(w.get_object_locs(obj=self.goal_obj, is_held=False)))))))
 
 
         elif isinstance(subtask, Chop):
@@ -528,6 +517,7 @@ class E2E_BRTDP:
         self.value_init(env_state=next_state)
 
         expected_value = 1.0 * value_f[(ns_repr, self.subtask)]
+        
         return float(cost + expected_value)
 
     def V(self, state, _type):
@@ -547,6 +537,7 @@ class E2E_BRTDP:
                 for action in self.get_actions(state_repr=s_repr)])
         # Use upper bound on value function.
         elif _type == "upper":
+            print("IDK")
             return min([
                 self.Q(state=state, action=action, value_f=self.v_u)
                 for action in self.get_actions(state_repr=s_repr)])
@@ -627,7 +618,7 @@ class E2E_BRTDP:
 
     def get_next_action(self, env, subtask, subtask_agent_names, other_agent_planners, team):
         """Return next action."""
-        print("-------------[e2e]-----------")
+        print("-------------[e2e]----------- for subtask", subtask)
         self.removed_object = None
         start_time = time.time()
 
@@ -661,7 +652,7 @@ class E2E_BRTDP:
             actions = self.get_actions(state_repr=cur_state.get_repr())
             qvals = [self.Q(state=cur_state, action=a, value_f=self.v_l)
                     for a in actions]
-            print([x for x in zip(actions, qvals)])
+            print("These are the qvalues of each move:",[x for x in zip(actions, qvals)])
             print('upper is', self.v_u[(cur_state.get_repr(), self.subtask)])
             print('lower is', self.v_l[(cur_state.get_repr(), self.subtask)])
 

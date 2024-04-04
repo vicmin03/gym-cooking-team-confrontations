@@ -98,6 +98,7 @@ class BayesianDelegator(Delegator):
                 agent_locs=tuple(agent_locs),
                 A_locs=tuple(A_locs),
                 B_locs=tuple(B_locs))
+
         # Subtask allocation is doable if it's reachable between agents and subtask objects.
         return distance < env.world.perimeter
 

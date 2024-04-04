@@ -36,10 +36,15 @@ class RealAgent:
         self.recipes = recipes
         
         self.team = 1  # what team agent is on - cooperates with same team, opponents with diff. teams - default team is 1 (blue)
-
-        # Bayesian Delegation.
-        self.hoarder = hoarder   # Boolean - true if this agent's role is to hoard ingredients
-
+        
+        self.hoarder = hoarder
+        # Boolean - true if this agent's role is to hoard ingredients
+        if hoarder:
+            # the first agent on each team is assigned to hoard ingredients
+            if self.name.find('1') == -1 and self.name.find('2') == -1:
+                self.hoarder = False   
+       
+       # Bayesian Delegation.
         self.reset_subtasks()
         self.new_subtask = None
         self.new_subtask_agent_names = []
@@ -47,7 +52,11 @@ class RealAgent:
         self.signal_reset_delegator = False
         self.is_subtask_complete = lambda w: False
         self.beta = arglist.beta
-        self.none_action_prob = 0.5
+        self.none_action_prob = 0.3
+
+        self.delegator = None
+
+        self.reward = 0
 
         self.model_type = agent_settings(arglist, name)
         if self.model_type == "up":
@@ -104,20 +113,10 @@ class RealAgent:
         self.update_subtasks(env=obs)
         self.new_subtask, self.new_subtask_agent_names = self.delegator.select_subtask(
             agent_name=self.name)
-        
-        if self.new_subtask is None:
-            self.refresh_subtasks(obs.world)
-            print("Incomplete subtasks are:", self.incomplete_subtasks)
-            
 
-        # !!! if new_subtask is hoard subtask, need to get object first 
-        # if isinstance(self.new_subtask, recipe_utils.Hoard):
-        #     print(self.holding, "Is chopped: ", self.holding.is_chopped())
-        #     if self.holding is None or not self.holding.is_chopped():
-        #         self.new_subtask = recipe_utils.Chop(self.new_subtask.args[0])
-        #         print("Want to do hoard so first need to ", self.new_subtask)     
-        #         if recipe_utils.Hoard(self.new_subtask.args[0]) not in self.incomplete_subtasks:
-        #             self.incomplete_subtasks.append(recipe_utils.Hoard(self.new_subtask.args[0]))
+        if self.new_subtask is None:
+            self.refresh_subtasks(obs)
+            print("Incomplete subtasks are:", self.incomplete_subtasks)
             
         self.plan(copy.copy(obs))
         return self.action
@@ -131,8 +130,9 @@ class RealAgent:
         
         # add subtasks for as many ingredients as there are available in the world
        
-        # all_subtasks += [subtask for path in subtasks for subtask in path]
+        all_subtasks += [subtask for path in subtasks for subtask in path]
         all_subtasks += self.recipes[0].get_con_actions()
+        
 
         print("Getting subtasks agent can perform: ", all_subtasks)
         # Uncomment below to view graph for recipe path i
@@ -150,16 +150,23 @@ class RealAgent:
         if self.hoarder:
             to_hoard = self.recipes[0].get_ingredients()
             for ingredient in to_hoard:
-                if len(env.world.get_object_locs(obj=ingredient, is_held=False)) == 0:
+                storage_spaces = env.world.get_all_object_locs(obj=env.world.get_obj(obj_string="Storage", type_="is_supply", state=None))
+                if len(env.world.get_object_locs(obj=ingredient, is_held=False)) > 0 and len(list(filter(lambda s: s.get_gridsquare_at(s).free(), storage_spaces))) > 0:
                     self.incomplete_subtasks.append(recipe_utils.Hoard(ingredient.get_name()))
-        
-        self.incomplete_subtasks += self.get_subtasks(world=env.world)
-        self.delegator = BayesianDelegator(
-                agent_name=self.name,
-                all_agent_names=env.get_agent_names(),
-                model_type=self.model_type,
-                planner=self.planner,
-                none_action_prob=self.none_action_prob, team=self.team)
+            # if it is not possible to hoard any more ingredients, then perform normal subtasks instead
+            if len(self.incomplete_subtasks) == 0:
+                self.incomplete_subtasks += self.get_subtasks(world=env.world)
+        else:
+            self.incomplete_subtasks += self.get_subtasks(world=env.world)
+            # self.incomplete_subtasks.append(recipe_utils.Chop(self.recipes[0].get_ingredients()[0]))
+        if self.delegator is None:
+            self.delegator = BayesianDelegator(
+                    agent_name=self.name,
+                    all_agent_names=env.get_agents_in_team(self.team),
+                    model_type=self.model_type,
+                    planner=self.planner,
+                    none_action_prob=self.none_action_prob, team=self.team)
+        print("Here are the incomplete subtasks", self.incomplete_subtasks)
 
     def reset_subtasks(self):
         """Reset subtasks---relevant for Bayesian Delegation."""
@@ -167,17 +174,17 @@ class RealAgent:
         self.subtask_agent_names = []
         self.subtask_complete = False
 
-    def refresh_subtasks(self, world):
+    def refresh_subtasks(self, env):
         """Refresh subtasks---relevant for Bayesian Delegation."""
         # Check whether subtask is complete.
         self.subtask_complete = False
         if self.subtask is None or len(self.subtask_agent_names) == 0:
             print("{} has no subtask".format((self.name, self.color)))
             return
-        self.subtask_complete = self.is_subtask_complete(world)
+        self.subtask_complete = self.is_subtask_complete(env.world)
         print("{} done with {} according to planner: {}\nplanner has subtask {} with subtask object {}".format(
             (self.name, self.color),
-            self.subtask, self.is_subtask_complete(world),
+            self.subtask, self.is_subtask_complete(env.world),
             self.planner.subtask, self.planner.goal_obj))
 
         # Refresh for incomplete subtasks.
@@ -185,8 +192,10 @@ class RealAgent:
             if self.subtask in self.incomplete_subtasks:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
+                # if agent completed a task, return a reward
+                self.reward = self.compute_reward(self.subtask)
             # if no more subtasks and there is stock left in the world, re-add chop-merge-deliver subtasks
-            if len(self.incomplete_subtasks) == 1:
+            if len(self.incomplete_subtasks) <= 1:
                 print("Gonna reset subtasks now")
                 keep_cooking = True
                 for ingredient in self.ingredients:
@@ -194,17 +203,20 @@ class RealAgent:
                         obj = nav_utils.get_obj(obj_string="Plate", type_="is_object", state=None)
                     else:
                         obj = nav_utils.get_obj(obj_string=ingredient, type_="is_object", state=FoodState.FRESH)
-                    print("Stock of ingredient", ingredient, "is", len(world.get_object_locs(obj=obj, is_held=False)))
-                    if len(world.get_object_locs(obj=obj, is_held=False)) == 0:
+                    print("Stock of ingredient", ingredient, "is", len(env.world.get_object_locs(obj=obj, is_held=False)))
+                    if len(env.world.get_object_locs(obj=obj, is_held=False)) == 0:
                         keep_cooking = False
                 if keep_cooking:
-                    self.reset_subtasks()
-                    self.incomplete_subtasks = self.get_subtasks(world)
+                    # self.reset_subtasks()
+                    # self.incomplete_subtasks = self.get_subtasks(env.world)
+                    self.setup_subtasks(env)
+                
         print('{} incomplete subtasks:'.format(
             (self.name, self.color)),
             ', '.join(str(t) for t in self.incomplete_subtasks))
 
     def update_subtasks(self, env):
+        print("Still need to do", self.incomplete_subtasks)
         """Update incomplete subtasks---relevant for Bayesian Delegation."""
         if ((self.subtask is not None and self.subtask not in self.incomplete_subtasks)
                 or (self.delegator.should_reset_priors(obs=copy.copy(env),
@@ -215,7 +227,9 @@ class RealAgent:
                 incomplete_subtasks=self.incomplete_subtasks,
                 priors_type=self.priors)
         else:
+            
             if self.subtask is None:
+                print(self.subtask, "should be hoard")
                 self.delegator.set_priors(
                     obs=copy.copy(env),
                     incomplete_subtasks=self.incomplete_subtasks,
@@ -321,17 +335,23 @@ class RealAgent:
         elif isinstance(self.new_subtask, Hoard):
             
             # gets number of ingredients currently in world (only those on counters, not including multiples stocked at spawn)
-            self.cur_obj_count = len(set(env.world.get_object_locs(self.goal_obj, is_held=False)))
-            print("Current count:", self.cur_obj_count)
+     
+            # ingredients = map(lambda a: env.world.get_object_at(a, None, find_held_objects = False), (set(env.world.get_object_locs(self.goal_obj, is_held=False))))
+            # hoarded = list(map(lambda i: i.location, filter(lambda a: a.last_held != self.team, ingredients)))
+            # self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)), hoarded)))
+            # --- or
+            ingredient_locs= filter(lambda a: env.world.get_last_held_by_at(a) == self.team, set(env.world.get_object_locs(self.goal_obj, is_held=False)))
+            self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)), ingredient_locs)))
 
+            print("Number of", self.goal_obj, "last held by team", self.team, "is", self.cur_obj_count)
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            
 
-            # self.is_subtask_complete = lambda w: self.has_more_obj(
-            #     len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)),
-            #     w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+            # self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
+            #     (lambda o: o in set(w.get_all_object_locs(self.subtask_action_object)), 
+            #     filter(lambda a: w.get_last_held_by_at(a) == self.team, set(w.get_object_locs(self.goal_obj, is_held=False)))))))
 
-            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.goal_obj, is_held=False))))
+            self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_object)), 
+                    set(w.get_object_locs(self.start_obj, is_held=False))))))
 
 
         elif isinstance(self.new_subtask, Steal):
@@ -348,19 +368,7 @@ class RealAgent:
             self.is_subtask_complete = lambda w: self.has_less_obj(
                    len(list(filter(lambda a: (a.last_held != self.team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), w.get_object_locs(obj=self.goal_obj, is_held=False))))))
 
-            # dishes = list(map(lambda x: env.world.get_objects_at(x), env.world.get_all_object_locs(self.goal_obj)))
-            # if len(dishes) > 0:
-            #     self.cur_obj_count = len(list(filter(lambda a: a.last_held != self.team, dishes)))
-            #     print("count of objects last held by the other team")
-            # else:
-            #     self.cur_obj_count = 0 
-
-            # # successful if count of dishes held by last team goes down
-            # self.has_less_obj = lambda x: int(x) < self.cur_obj_count
-
-            # self.is_subtask_complete = lambda w: self.has_less_obj(
-            #         len(list(filter(lambda a: a is not None and a.last_held != self.team, map(lambda x: w.get_objects_at(x), w.get_all_object_locs(self.goal_obj))))))
-
+          
         # Otherwise, for other subtasks, check based on # of objects attributed to your team
         else:
             self.cur_obj_count = len(env.world.get_all_object_locs(obj=self.goal_obj))
@@ -368,6 +376,41 @@ class RealAgent:
             # Goal state is reached when the number of desired objects has increased.
             self.is_subtask_complete = lambda w: len(w.get_all_object_locs(obj=self.goal_obj)) > self.cur_obj_count
             # self.is_subtask_complete = lambda w: len(list(filter(lambda b: b is not None and b.last_held == self.team, map(lambda a: w.get_objects_at(a)[0], env.world.get_all_object_locs(obj=self.goal_obj))))) > self.cur_obj_count
+
+    def compute_reward(self, old_obs, new_obs):
+        # get reward for this agent's action for each timestep
+        if len(self.all_subtasks) == 0:
+            self.all_subtasks = self.get_subtasks(old_obs.world)
+        for subtask in self.all_subtasks:
+            if self.check_subtask_complete(subtask, old_obs, new_obs):
+                if isinstance(subtask, recipe_utils.Chop):
+                    return 5
+                elif isinstance(subtask, recipe_utils.Merge):
+                    return 5
+                elif isinstance(subtask, recipe_utils.Hoard):
+                    return 4
+                # elif isinstance(subtask, recipe_utils.Deliver):
+                #     return 15
+                elif isinstance(subtask, recipe_utils.Trash):
+                    return -2
+        return 0
+    
+    def compute_reward(self, subtask):
+        # get reward for this agent's action for each timestep
+        if isinstance(subtask, recipe_utils.Chop):
+            return 5
+        elif isinstance(subtask, recipe_utils.Merge):
+            return 5
+        elif isinstance(subtask, recipe_utils.Hoard):
+            return 4
+        elif isinstance(subtask, recipe_utils.Deliver):
+            return 20
+        elif isinstance(subtask, recipe_utils.Trash):
+            return -2
+        return 0
+    
+    def get_reward(self):
+        return self.reward
 
 class SimAgent:
     """Simulation agent used in the environment object."""

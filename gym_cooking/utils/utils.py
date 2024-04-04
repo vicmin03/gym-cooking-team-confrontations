@@ -27,3 +27,4 @@ def rep_to_int(rep: str):
     elif rep == 't-l': return 11        # merged tomato-lettuce
     elif rep == 'p-l': return 12        # merged plate-lettuce
     elif rep == 'p-t': return 13        # merged plate-tomato
+    elif rep == 'S' : return 14         # storage space (for hoarding)

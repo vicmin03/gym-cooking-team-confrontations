@@ -124,6 +124,10 @@ class Game:
             pygame.draw.rect(self.screen, Color.COUNTER_BORDER, fill, 1)
             self.draw('trashcan', self.tile_size, sl)
 
+        elif isinstance(gs, Storage):
+            pygame.draw.rect(self.screen, Color.COUNTER, fill)
+            pygame.draw.rect(self.screen, (0, 255, 0), fill, 1)
+
         return
 
     def draw(self, path, size, location):

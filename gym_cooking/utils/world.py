@@ -16,7 +16,7 @@ class World:
     NAV_ACTIONS = [(0, 1), (0, -1), (-1, 0), (1, 0)]
 
     def __init__(self, arglist):
-        self.rep = [] # [row0, row1, ..., rown]
+        self.rep = [] # [row0, row1, ..., rown]ed
         self.string_rep = []
         self.arglist = arglist
         self.objects = defaultdict(lambda : [])
@@ -110,7 +110,6 @@ class World:
                     B_loc=B_loc)
             if bound < lower_bound:
                 lower_bound = bound
-                target = (A_loc, B_loc)
         
         return lower_bound
 
@@ -305,6 +304,17 @@ class World:
         all_objs = self.get_object_list()
         objs = list(filter(lambda obj: obj.location == location and isinstance(obj, Object), all_objs))
         return objs
+    
+    # returns the number of the team that last held the object at location
+    def get_last_held_by_at(self, location):
+        all_objs = self.get_object_list()
+        objs = list(filter(lambda obj: obj.location == location and isinstance(obj, Object), all_objs))
+        if len(objs) > 0:
+            if objs[0].last_held == 1:
+                return 1
+            elif objs[0].last_held == 2:
+                return 2
+        return 0
 
     def get_gridsquare_at(self, location):
         gss = list(filter(lambda o: o.location == location and\

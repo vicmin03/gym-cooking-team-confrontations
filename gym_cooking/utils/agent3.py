@@ -401,22 +401,36 @@ class RealAgent:
             return old_obj_count < len(new_obs.world.get_all_object_locs(obj=goal_obj))
 
 
-    def get_reward(self, old_obs, new_obs):
+    def get_reward(self, old_obs, new_obs, subtask, goal_loc):
         # get reward for this agent's action for each timestep
-        if len(self.all_subtasks) == 0:
-            self.all_subtasks = self.get_subtasks(old_obs.world)
-        for subtask in self.all_subtasks:
-            if self.check_subtask_complete(subtask, old_obs, new_obs):
-                if isinstance(subtask, recipe_utils.Chop):
-                    return 5
-                elif isinstance(subtask, recipe_utils.Merge):
-                    return 5
-                elif isinstance(subtask, recipe_utils.Hoard):
-                    return 4
-                # elif isinstance(subtask, recipe_utils.Deliver):
-                #     return 15
-                elif isinstance(subtask, recipe_utils.Trash):
-                    return -2
+            # if completed their subtask, give reward
+           
+        if self.check_subtask_complete(subtask, old_obs, new_obs):
+            if isinstance(subtask, recipe_utils.Chop):
+                return 5
+            elif isinstance(subtask, recipe_utils.Merge):
+                return 5
+            elif isinstance(subtask, recipe_utils.Hoard):
+                return 4
+            # elif isinstance(subtask, recipe_utils.Deliver):
+            #     return 15
+            elif isinstance(subtask, recipe_utils.Trash):
+                return -2
+            
+        # give reward for moving towards the goal location and holding the correct obj
+        start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=subtask)
+        subtask_action_obj = nav_utils.get_subtask_action_obj(subtask=subtask, team=self.team)
+
+        new_dist = new_obs.get_lower_bound_for_subtask_given_objs(
+                subtask=subtask,
+                subtask_agent_names=[self.name],
+                start_obj=start_obj,
+                goal_obj=goal_obj,
+                subtask_action_obj=subtask_action_obj)
+        if new_dist > 0:
+            return 20/new_dist
+        else:
+            return 25
         return 0
 
 

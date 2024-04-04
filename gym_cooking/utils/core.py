@@ -27,6 +27,7 @@ class Rep:
     DELIVERYBLUE = '£'
     DELIVERYRED = "$"
     TRASHCAN = '#'
+    STORAGE = 'S'
 
 class GridSquare:
     def __init__(self, name, location):
@@ -170,7 +171,17 @@ class Trashcan(GridSquare):
         GridSquare.__init__(self, "Trashcan", location)
         self.rep = Rep.TRASHCAN
     def get_repr(self):
-        return GridSquareRepr(name=self.name, location=self.location, holding= None)
+        return GridSquareRepr(name=self.name, location=self.location, holding=None)
+    
+class Storage(GridSquare):
+    def __init__(self, location):
+        GridSquare.__init__(self, "Storage", location)
+        self.rep = Rep.STORAGE
+    def get_repr(self):
+        return GridSquareRepr(name=self.name, location=self.location, holding=None)
+        # whether counter is free to put objects on
+    def free(self):
+        return (self.holding is None or self.holding == [])
 
 
 # -----------------------------------------------------------
@@ -428,6 +439,7 @@ RepToClass = {
     Rep.DELIVERYBLUE: globals()['DeliveryBlue'],
     Rep.DELIVERYRED: globals()['DeliveryRed'],
     Rep.TRASHCAN: globals()['Trashcan'],
+    Rep.STORAGE: globals()['Storage'],
 }
 
 
