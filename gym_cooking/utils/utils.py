@@ -1,4 +1,3 @@
-
 def agent_settings(arglist, agent_name):
     if agent_name[-1] == "1": return arglist.model1
     elif agent_name[-1] == "2": return arglist.model2
@@ -28,3 +27,13 @@ def rep_to_int(rep: str):
     elif rep == 'p-l': return 12        # merged plate-lettuce
     elif rep == 'p-t': return 13        # merged plate-tomato
     elif rep == 'S' : return 14         # storage space (for hoarding)
+
+def subtask_to_int(subtask: str):
+    # returns an integer according to the subtask 
+    if subtask.find('Chop') >= 0: return 1
+    elif subtask.find('Merge') >= 0: return 2
+    elif subtask.find('Deliver') >= 0: return 3
+    elif subtask.find('Hoard') >= 0: return 4
+    elif subtask.find('Steal') >= 0: return 5
+    elif subtask.find('Trash') >= 0: return 6
+    else: return 0              # if no subtask

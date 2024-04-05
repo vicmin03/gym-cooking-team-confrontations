@@ -212,6 +212,9 @@ class OvercookedEnvironment(gym.Env):
         self.termination_info = ""
         self.successful = False
 
+        self.team1_score = 0
+        self.team2_score = 0
+
         # Load world & distances.
         self.load_level(
                 level=self.arglist.level,
@@ -507,11 +510,11 @@ class OvercookedEnvironment(gym.Env):
             A_locs = self.world.get_object_locs(
                     obj=start_obj[0], is_held=False) + list(
                             map(lambda a: a.location, list(
-                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj[0], self.sim_agents))))
+                                filter(lambda a: a.name in subtask_agent_names and a.team == agent.team and a.holding == start_obj[0], self.sim_agents))))
             B_locs = self.world.get_object_locs(
                     obj=start_obj[1], is_held=False) + list(
                             map(lambda a: a.location, list(
-                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj[1], self.sim_agents))))
+                                filter(lambda a: a.name in subtask_agent_names and a.team == agent.team and a.holding == start_obj[1], self.sim_agents))))
 
         
 

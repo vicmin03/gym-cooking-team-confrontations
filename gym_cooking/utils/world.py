@@ -101,7 +101,6 @@ class World:
     def get_lower_bound_between(self, subtask, agent_locs, A_locs, B_locs):
         """Return distance lower bound between subtask-relevant locations."""
         lower_bound = self.perimeter + 1
-        target = None
         for A_loc, B_loc in product(A_locs, B_locs):
             bound = self.get_lower_bound_between_helper(
                     subtask=subtask,
@@ -122,6 +121,7 @@ class World:
         A_possible_na = [(0, 0)] if not A.collidable else World.NAV_ACTIONS
         B_possible_na = [(0, 0)] if not B.collidable else World.NAV_ACTIONS
 
+
         for A_na, B_na in product(A_possible_na, B_possible_na):
             if len(agent_locs) == 1:
                 try:
@@ -131,6 +131,7 @@ class World:
                             self.reachability_graph, (A_loc, A_na), (B_loc, B_na))
                 except:
                     continue
+                
                 bound = bound_1 + bound_2 - 1
 
             elif len(agent_locs) == 2:
@@ -187,6 +188,7 @@ class World:
             if bound < lower_bound:
                 lower_bound = bound
 
+    
         return max(1, lower_bound)
 
     def check_bound(self, min_bound_to_A, min_bound_to_B,

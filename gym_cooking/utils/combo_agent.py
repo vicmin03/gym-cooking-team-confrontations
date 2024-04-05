@@ -12,7 +12,7 @@ import navigation_planner.utils as nav_utils
 
 # Other core modules
 from utils.core import Counter, Cutboard, Food, FoodState
-from utils.utils import agent_settings
+from utils.utils import agent_settings, subtask_to_int
 
 import numpy as np
 import copy
@@ -100,6 +100,9 @@ class RealAgent:
             return 'None'
         return self.holding.full_name
 
+    def get_subtask(self):
+        return str(self.subtask)
+
     def select_action(self, obs):
 
         """Return best next action for this agent given observations."""
@@ -112,7 +115,9 @@ class RealAgent:
             self.setup_subtasks(env=obs)
 
         if self.model_type == 'madqn':
-            self.action = obs.possible_actions[self.online_net.select_action(obs)]
+            subtask_int = [subtask_to_int(str(self.subtask))]
+            len(subtask_int+obs.create_obs())
+            self.action = obs.possible_actions[self.online_net.select_action(subtask_int+obs.create_obs())]
         else:
             # Select subtask based on Bayesian Delegation.
             self.update_subtasks(env=obs)
@@ -414,11 +419,41 @@ class RealAgent:
             # Goal state is reached when the number of desired objects has increased.
             return old_obj_count < len(new_obs.world.get_all_object_locs(obj=goal_obj))
 
+
+    def subtask_is_doable(self, env, subtask):
+        """Return whether this agent can do a subtask in the current environment state."""
+        # Doing nothing is always possible.
+        if subtask is None:
+            return True
+        sim_agent = list(filter(lambda x: x.name == self.name, env.sim_agents))[0]
+        agent_loc = [sim_agent.location]
+        start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=subtask)
+        subtask_action_obj = nav_utils.get_subtask_action_obj(subtask=subtask, team=self.team)
+        A_locs, B_locs = env.get_AB_locs_given_objs(
+                subtask=subtask,
+                agent = self,
+                subtask_agent_names=self.name,
+                start_obj=start_obj,
+                goal_obj=goal_obj,
+                subtask_action_obj=subtask_action_obj)
+
+        if len(A_locs) == 0 or len(B_locs) == 0:
+            return False
+        distance = env.world.get_lower_bound_between(
+                subtask=subtask,
+                agent_locs=tuple(agent_loc),
+                A_locs=set(A_locs),
+                B_locs=set(B_locs))
+
+        # Subtask allocation is doable if it's reachable between agents and subtask objects.
+        return distance < env.world.perimeter
+
+
     # get reward for agents using BD - get the Q value of taking state and action
     # def get_reward(self, obs, action):
     #     return self.planner.Q(obs, action, value_f=self.planner.v_l)
 
-    def get_reward_for_subtask(self, subtask, new_obs):
+    def get_reward_for_subtask(self, subtask, new_obs, value):
          # give reward for moving towards the goal location and holding the correct obj
         start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=subtask)
         subtask_action_obj = nav_utils.get_subtask_action_obj(subtask=subtask, team=self.team)
@@ -430,55 +465,47 @@ class RealAgent:
                 goal_obj=goal_obj,
                 subtask_action_obj=subtask_action_obj)
         if new_dist > 0:
-            return 10/new_dist
+            return value/new_dist
         else:
-            return 6
-        return new_dist
+            return value
 
 
     def get_reward(self, old_obs, new_obs):
+        rewards_dict = {recipe_utils.Chop: 8, recipe_utils.Merge: 16, recipe_utils.Deliver: 40, recipe_utils.Hoard: 5, recipe_utils.Steal: 10, recipe_utils.Trash: 3}
+
         # get reward for this agent's action for each timestep
             # if completed their subtask, give reward
         if self.subtask is not None:
             if self.check_subtask_complete(self.subtask, old_obs, new_obs):
-                if isinstance(subtask, recipe_utils.Chop):
-                    return 5
-                elif isinstance(subtask, recipe_utils.Merge):
-                    return 5
-                elif isinstance(subtask, recipe_utils.Hoard):
+                if isinstance(self.subtask, recipe_utils.Chop):
+                    return 8
+                elif isinstance(self.subtask, recipe_utils.Merge):
+                    return 8
+                elif isinstance(self.subtask, recipe_utils.Hoard):
                     return 4
-                elif isinstance(subtask, recipe_utils.Deliver):
+                elif isinstance(self.subtask, recipe_utils.Deliver):
                     return 15
-                elif isinstance(subtask, recipe_utils.Trash):
+                elif isinstance(self.subtask, recipe_utils.Trash):
                     return -2
-                
+                # clears this subtask 
+                self.subtask = None
+                print("Finish my subtask so resetting it to ", self.subtask)
             else:
                 print("My subtask is:", self.subtask)
                 # give reward for moving towards the goal location and holding the correct obj
                 start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=self.subtask)
                 subtask_action_obj = nav_utils.get_subtask_action_obj(subtask=self.subtask, team=self.team)
 
-                # new_dist = new_obs.get_lower_bound_for_subtask_given_objs(
-                #         subtask=subtask,
-                #         subtask_agent_names=[self.name],
-                #         start_obj=start_obj,
-                #         goal_obj=goal_obj,
-                #         subtask_action_obj=subtask_action_obj)
-                
-                A_locs, B_locs = new_obs.get_AB_locs_given_objs(
-                    subtask=self.subtask,
-                    agent = self.name,
-                    subtask_agent_names=[self.name],
-                    start_obj=start_obj,
-                    goal_obj=goal_obj,
-                    subtask_action_obj=subtask_action_obj)
-                # if new_dist > 0:
-                #     return 3/new_dist
-                # else:
-                #     return 4
+                # A_locs, B_locs = new_obs.get_AB_locs_given_objs(
+                #     subtask=self.subtask,
+                #     agent = self,
+                #     subtask_agent_names=self.name,
+                #     start_obj=start_obj,
+                #     goal_obj=goal_obj,
+                #     subtask_action_obj=subtask_action_obj)
+                # print("So AB_locs are", A_locs, "to ", B_locs)
 
-                print("Hey ", A_locs, "to", B_locs)
-                return 2
+                return self.get_reward_for_subtask(self.subtask, new_obs, rewards_dict[type(self.subtask)])
 
         # for madqn agents not using subtasks
         else:
@@ -504,11 +531,18 @@ class RealAgent:
                     #     return 15
                     elif isinstance(subtask, recipe_utils.Trash):
                         return -2
-            
-                subtask_rewards.append(self.get_reward_for_subtask(subtask, new_obs))
+                else:
+                    if self.subtask_is_doable(env=old_obs, subtask=subtask):
+                        subtask_rewards.append(self.get_reward_for_subtask(subtask, new_obs, rewards_dict[type(subtask)]))
+                    else:
+                        subtask_rewards.append(0)
+                    
             print(subtask_rewards)
+
+            # sets the subtask of this agent to the task they are closest to completing
+            self.subtask = self.all_subtasks[np.argmax(subtask_rewards)]
             return max(subtask_rewards)
-            return 0
+            
 
 
 class SimAgent:

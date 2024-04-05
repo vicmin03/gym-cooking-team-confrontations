@@ -11,10 +11,12 @@ class Network(nn.Module):
     def __init__(self, env, path):
         super().__init__()
         
-        # number of inputs to nn = product of features in observation space
+        # number of inputs to nn = product of features in observation space + number of agents (subtasks)
         in_features = 1
         for i in env.observation_space.shape:
             in_features *= i
+        # in_features += len(env.get_agent_names())
+        in_features += 1    # add the subtask of the relevant agent
         
         self.net = nn.Sequential(
             nn.Linear(in_features, 64),            # input layer
@@ -32,9 +34,9 @@ class Network(nn.Module):
         return self.net(x)
     
     # determining what action to take
-    def select_action(self, obs):
+    def select_action(self, obs_v):
         # turn observation into a tensor (vector of each dimension value)
-        obs_t = T.as_tensor(obs.create_obs(), dtype=T.float32)
+        obs_t = T.as_tensor(obs_v, dtype=T.float32)
 
         # calculate the q values for actions from this observation 
             # need unsequeeze to get batch dimension?

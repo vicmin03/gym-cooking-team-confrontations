@@ -3,6 +3,7 @@ from recipe_planner.recipe import *
 from utils.world import World
 from utils.combo_agent import RealAgent, SimAgent, COLORS, TEAM_COLORS
 from utils.core import *
+from utils.utils import subtask_to_int
 from misc.game.gameplay import GamePlay
 from misc.metrics.metrics_bag import Bag
 
@@ -134,17 +135,28 @@ def initialize_buffer(env, obs, madqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE):
     for i in range (MIN_REPLAY_SIZE):
         action_dict = {}
         action_arr = []
+        old_subtasks = []
+        new_subtasks = []
+
         for agent in madqn_agents:
             # choose a random action to perform in the environment 
             action = env.action_space.sample()
             action_dict[agent.name] = env.possible_actions[action]
             action_arr.append(action)
 
+            old_subtasks.append(subtask_to_int(agent.get_subtask()))
+
         # get observation from performing actions
         new_obs, reward1, reward2, done, info = env.step(action_dict, madqn_agents)
 
+        for agent in real_agents:
+            new_subtasks.append(subtask_to_int(agent.get_subtask()))
+        
+        obs_v = old_subtasks + obs.create_obs()
+        new_obs_v = new_subtasks + new_obs.create_obs() 
+
         # save transition as record in replay buffer
-        transition = (obs.create_obs(), np.asarray(action_arr), reward1, reward2, done, new_obs.create_obs())
+        transition = (obs_v, np.asarray(action_arr), reward1, reward2, done, new_obs_v)
     
         replay_buffer.append(transition)
         obs = new_obs
@@ -162,6 +174,7 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
     transitions = random.sample(replay_buffer, BATCH_SIZE)
 
     # extract each part from the transition tuples into their own np array
+        # observations should only contain agent's own subtask (cannot know other agent's subtasks)
     observations = np.asarray([t[0] for t in transitions])
     actions = np.asarray([t[1] for t in transitions])
     rewards1 = np.asarray([t[2] for t in transitions])
@@ -183,41 +196,50 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
         # gets a set of q values for each observation, with q as the first dimension
     for i in range (0, len(dqn_agents)):
         agent = dqn_agents[i]
-        target_q_values = agent.target_net(new_observations_t)
-            # max returns a tuple with (highest_val, index)
-        max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
+        if agent.model_type == 'madqn':
+            my_observations = np.asarray([np.concatenate(([observation[i]], observation[len(dqn_agents):])) for observation in observations])
+            my_observations_t = T.as_tensor(my_observations, dtype=T.float32) 
 
-        # choose to use the rewards tensor of their own team only 
-        if agent.team == 1:
-            targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
-        elif agent.team == 2:
-            targets = rewards2_t * GAMMA * (1- dones_t) * max_target_q_values
+            my_new_observations = np.asarray([np.concatenate(([observation[i]], observation[len(dqn_agents):])) for observation in new_observations])
 
-        # Compute Loss
-            # get expected q values from the online nn based on the given observations
-        q_values = agent.online_net(observations_t)
+            my_new_observations_t = T.as_tensor(my_new_observations, dtype=T.float32) 
 
-        # get all the actions taken by this agent
-        my_actions = [action[i] for action in actions]
-        my_actions_t = T.as_tensor(my_actions, dtype=T.int64).unsqueeze(-1)
+            # passing in observations of this agent's subtask only
+            target_q_values = agent.target_net(my_new_observations_t)
+                # max returns a tuple with (highest_val, index)
+            max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
 
-        # this applies the index of the actions taken by the agent (my_actions_t) to get the q_value for that action
-        action_q_values = T.gather(input=q_values, dim=1, index=my_actions_t)
+            # choose to use the rewards tensor of their own team only 
+            if agent.team == 1:
+                targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
+            elif agent.team == 2:
+                targets = rewards2_t * GAMMA * (1- dones_t) * max_target_q_values
 
-        # compute the loss with huber loss function
-        loss = nn.functional.smooth_l1_loss(action_q_values, targets)
+            # Compute Loss
+                # get expected q values from the online nn based on the given observations
+            q_values = agent.online_net(my_observations_t)
 
-        loss_arr.append(loss)
+            # get all the actions taken by this agent
+            my_actions = [action[i] for action in actions]
+            my_actions_t = T.as_tensor(my_actions, dtype=T.int64).unsqueeze(-1)
 
-        # Gradient Descent
-        agent.optimizer.zero_grad()
-        loss.backward()
-        agent.optimizer.step()
+            # this applies the index of the actions taken by the agent (my_actions_t) to get the q_value for that action
+            action_q_values = T.gather(input=q_values, dim=1, index=my_actions_t)
 
-        # Update Target Network parameters
-        if step % TARGET_UPDATE_FREQ == 0:
-            # updates the target network params to be the same as the online network
-            agent.target_net.load_state_dict(agent.online_net.state_dict())
+            # compute the loss with huber loss function
+            loss = nn.functional.smooth_l1_loss(action_q_values, targets)
+
+            loss_arr.append(loss)
+
+            # Gradient Descent
+            agent.optimizer.zero_grad()
+            loss.backward()
+            agent.optimizer.step()
+
+            # Update Target Network parameters
+            if step % TARGET_UPDATE_FREQ == 0:
+                # updates the target network params to be the same as the online network
+                agent.target_net.load_state_dict(agent.online_net.state_dict())
 
     avg_loss.append(np.mean([loss.detach().numpy() for loss in loss_arr]))
 
@@ -228,28 +250,28 @@ def plot_loss_graph(avg_loss, cumulative_r1, cumulative_r2):
     plt.ylabel('Cumulative')
     plt.title("Learning Curve - Reward")
     plt.legend()
-    # plt.savefig('Rewards Curve')
-    plt.show()
+    plt.savefig('Rewards Curve')
 
     plt.plot(avg_loss, label='Loss')
     plt.xlabel('Training Iteration')
     plt.ylabel('Loss')
     plt.title("Learning Curve")
     plt.legend()
-    # plt.savefig('Loss Curve')
-    plt.show()
+    plt.savefig('Loss Curve')
+    
 
 
 # ---- Parameters ---------------------------------
 
-# GAMMA = 0.99     # the discount rate
+GAMMA = 0.99     # the discount rate
+# ALPHA = 5e-4       # the learning rate (for dqn)
 BATCH_SIZE = 100    # no of samples we sample from the memory buffer
 BUFFER_SIZE = 50000     # the max no. of samples stores in the buffer before overriding old transitions
 MIN_REPLAY_SIZE = 1000     # the no. of transitions we need in repay buffer before training can begin
 EPSILON_START = 1.0
 EPSILON_END = 0.02
 EPSILON_DECAY = 10000   # epsilon decreases from start_val to end_val over this many steps
-TARGET_UPDATE_FREQ = 200   # how many steps before target network params are updated from online parameters
+TARGET_UPDATE_FREQ = 250   # how many steps before target network params are updated from online parameters
 
 
 # ---- For Metrics ---------------------------------
@@ -263,152 +285,168 @@ cumulative_r2 = [0]
 if __name__ == '__main__':
     arglist = parse_arguments()
 
-    GAMMA = arglist.gamma
-    BATCH_SIZE = arglist.batch_size
+    if arglist.play:
+        env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
+        env.reset()
+        game = GamePlay(env.filename, env.world, env.sim_agents, env)
+        game.on_execute()
+    else:
 
-    env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
-    obs = env.reset()
+        GAMMA = arglist.gamma
+        BATCH_SIZE = arglist.batch_size
 
-    # Info bag for saving pkl files
-    bag = Bag(arglist=arglist, filename=env.filename)
-    bag.set_recipe(recipe_subtasks=env.all_subtasks)
+        env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
+        obs = env.reset()
 
-
-    # ---- Initialisation of agents, networks and buffers ------
-
-    real_agents = initialize_agents(arglist=arglist, env=env)
-
-
-    train = arglist.train
-    print(train)
-    if not train:
-        try:
-            for agent in real_agents: 
-                if agent.model_type == 'madqn':
-                    agent.online_net.load_params(arglist.level)
-                    print("Gonna play with loaded params")
-        except:
-            train = True
-
-    print(train)
+        # Info bag for saving pkl files
+        bag = Bag(arglist=arglist, filename=env.filename)
+        bag.set_recipe(recipe_subtasks=env.all_subtasks)
 
 
-    if train:
-        # loads the parameters of the online network to the target network
-        for agent in real_agents:
-            if agent.model_type == 'madqn':
-                agent.target_net.load_state_dict(agent.online_net.state_dict())
+        # ---- Initialisation of agents, networks and buffers ------
 
-        # replay buffer to keep track of action history and transitions
-            # to start, fill replay buffer with random observations
-        replay_buffer = initialize_buffer(env, obs, real_agents, MIN_REPLAY_SIZE, BUFFER_SIZE)
-
-        # reward buffer keeps history of rewards, as tuples for rewards of each team (team1_reward, team2_reward)
-        reward_buffer = deque(maxlen=1000)
-
-        team1_reward = 0
-        team2_reward = 0
+        real_agents = initialize_agents(arglist=arglist, env=env)
 
 
-        # ---- Training Loop --------
-        for step in range (0, arglist.training_steps):
-            # holds which action each agent takes
-            action_dict = {}
-            action_arr = []
+        train = arglist.train
+        if not train:
+            try:
+                for agent in real_agents: 
+                    if agent.model_type == 'madqn':
+                        agent.online_net.load_params(arglist.level)
+            except:
+                train = True
 
-            # this reduces epsilon based on what step we're on - decays from start to end value
-            epsilon = np.interp(step, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 
+        if train:
+            # loads the parameters of the online network to the target network
             for agent in real_agents:
                 if agent.model_type == 'madqn':
-                    random_sample = random.random()
+                    agent.target_net.load_state_dict(agent.online_net.state_dict())
 
-                    if random_sample <= epsilon:
-                        # take a random action = exploration
-                        action = env.possible_actions[env.action_space.sample()]
-                    else:
-                        # or intelligently choose an action based on learning
-                        action = agent.select_action(obs=obs)
-                    
-                else:
-                    action = agent.select_action(obs=obs)
-                action_dict[agent.name] = action
-                action_arr.append(env.possible_actions.index(action))
+            # replay buffer to keep track of action history and transitions
+                # to start, fill replay buffer with random observations
+            replay_buffer = initialize_buffer(env, obs, real_agents, MIN_REPLAY_SIZE, BUFFER_SIZE)
 
-            # get + save observation from performing action
-            new_obs, reward1, reward2, done, info = env.step(action_dict, real_agents)
-
-            # saves new transition and observations in replay buffer
-            transition = (obs.create_obs(), np.asarray(action_arr), reward1, reward2, done, new_obs.create_obs())
-            replay_buffer.append(transition)
-            obs = new_obs
-            
-            team1_reward += reward1
-            team2_reward += reward2
-
-            # save the rewards for each team in reward buffer
-            reward_buffer.append((team1_reward, team2_reward))  
-            cumulative_r1.append(cumulative_r1[-1] + team1_reward)
-            cumulative_r2.append(cumulative_r2[-1] + team2_reward)
+            # reward buffer keeps history of rewards, as tuples for rewards of each team (team1_reward, team2_reward)
+            reward_buffer = deque(maxlen=1000)
 
             team1_reward = 0
             team2_reward = 0
 
-            if done:
-                obs = env.reset()
 
-            # ---- Gradient Step ----------
-                # parameters of networks are updated based on training
-            update(env, real_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_loss)
+            # ---- Training Loop --------
+            for step in range (0, arglist.training_steps):
+                # holds which action each agent takes
+                action_dict = {}
+                action_arr = []
+                old_subtasks = []
+                new_subtasks = []
 
-            # TODO: Save nn params
+                # this reduces epsilon based on what step we're on - decays from start to end value
+                epsilon = np.interp(step, [0, EPSILON_DECAY], [EPSILON_START, EPSILON_END])
 
-            # Logging 
-            if step % 50 == 0:
-                print()
-                print("Step", step)
-                sum1 = 0
-                sum2 = 0
-                for reward in reward_buffer:
-                    sum1 += reward[0]
-                    sum2 += reward[1]
-                    print("reward for team 1 is", sum1)
-                    print("reward for team 2 is", sum2)
-                    print("length of ", reward_buffer, "is, ", len(reward_buffer))
-                # print("Average Reward for team 1: ", np.mean(reward[0] for reward in reward_buffer))
-                print("Average Reward for team 1: ", sum1/len(reward_buffer))
-                print("Average Reward for team 2: ", sum2/len(reward_buffer))
+                for agent in real_agents:
+                    old_subtasks.append(subtask_to_int(agent.get_subtask()))
+                    if agent.model_type == 'madqn':
+                        random_sample = random.random()
 
-            # print(step)
+                        if random_sample <= epsilon:
+                            # take a random action = exploration
+                            action = env.possible_actions[env.action_space.sample()]
+                        else:
+                            # or intelligently choose an action based on learning
+                            action = agent.select_action(obs=obs)
+                        
+                    else:
+                        action = agent.select_action(obs=obs)
+                    action_dict[agent.name] = action
+                    action_arr.append(env.possible_actions.index(action))
+                    
+                # get + save observation from performing action
+                new_obs, reward1, reward2, done, info = env.step(action_dict, real_agents)
 
-        for agent in real_agents:
-            if agent.model_type == 'madqn':
-                agent.online_net.save_params(arglist.level)
+                for agent in real_agents:
+                    new_subtasks.append(subtask_to_int(agent.get_subtask()))
+                
+                obs_v = old_subtasks + obs.create_obs()
+                new_obs_v = new_subtasks + new_obs.create_obs() 
 
-        plot_loss_graph(avg_loss, cumulative_r1, cumulative_r2)
+                # saves new transition and observations in replay buffer
+                transition = (obs_v, np.asarray(action_arr), reward1, reward2, done, new_obs_v)
+                replay_buffer.append(transition)
+                obs = new_obs
+                
+                team1_reward += reward1
+                team2_reward += reward2
 
+                # save the rewards for each team in reward buffer
+                reward_buffer.append((team1_reward, team2_reward))  
+                # cumulative_r1.append(cumulative_r1[-1] + team1_reward)
+                # cumulative_r2.append(cumulative_r2[-1] + team2_reward)
+                cumulative_r1.append(np.mean([reward[0] for reward in reward_buffer]))
+                cumulative_r2.append(np.mean([reward[1] for reward in reward_buffer]))
 
-    while not env.done():
-        action_dict = {}
+                team1_reward = 0
+                team2_reward = 0
 
-        for agent in real_agents:
-            action = agent.select_action(obs=obs)
-            print(agent.name, "is going to take", str(action))
-            action_dict[agent.name] = action
+                if done:
+                    obs = env.reset()
 
-        obs, reward1, reward2, done, info = env.step(action_dict=action_dict, agents=real_agents)
+                # ---- Gradient Step ----------
+                    # parameters of networks are updated based on training
+                update(env, real_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_loss)
 
-        # Agents
-        for agent in real_agents:
-            # agent.refresh_subtasks(world=env.world)
-            agent.refresh_subtasks(env=env)
+                # TODO: Save nn params
 
-    # Saving info   
-    # bag.add_status(cur_time=info['t'], real_agents=real_agents)
+                # Logging 
+                if step % 50 == 0:
+                    print()
+                    print("Step", step)
+                    sum1 = 0
+                    sum2 = 0
+                    for reward in reward_buffer:
+                        sum1 += reward[0]
+                        sum2 += reward[1]
+                        
+                    print("Average Reward for team 1: ", np.mean(reward[0] for reward in reward_buffer))
+                    print("Average Reward for team 1: ", sum1/len(reward_buffer))
+                    print("Average Reward for team 2: ", sum2/len(reward_buffer))
 
-    print("\n TERMINATED AFTER 70 STEPS: Team 1 score:", env.get_team1_score(), "Team 2 score: ", env.get_team2_score())
+                # print(step)
 
-    # Saving final information before saving pkl file
-    # bag.set_collisions(collisions=env.collisions)
-    # bag.set_termination(termination_info=env.termination_info,
-    #         successful=env.successful)
+            for agent in real_agents:
+                if agent.model_type == 'madqn':
+                    agent.online_net.save_params(arglist.level)
+
+            plot_loss_graph(avg_loss, cumulative_r1, cumulative_r2)
+
+        env.reset()
+        while not env.done():
+            action_dict = {}
+
+            for agent in real_agents:
+                # if agent.model_type == 'madqn':
+                #     action = agent.select_action(obs)
+
+                # else:
+                action = agent.select_action(obs=obs)
+                print(agent.name, "is going to take", str(action))
+                action_dict[agent.name] = action
+
+            obs, reward1, reward2, done, info = env.step(action_dict=action_dict, agents=real_agents)
+
+            # Agents
+            for agent in real_agents:
+                # agent.refresh_subtasks(world=env.world)
+                agent.refresh_subtasks(env=env)
+
+        # Saving info   
+        # bag.add_status(cur_time=info['t'], real_agents=real_agents)
+
+        print("\n TERMINATED AFTER 70 STEPS: Team 1 score:", env.get_team1_score(), "Team 2 score: ", env.get_team2_score())
+
+        # Saving final information before saving pkl file
+        # bag.set_collisions(collisions=env.collisions)
+        # bag.set_termination(termination_info=env.termination_info,
+        #         successful=env.successful)
