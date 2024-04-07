@@ -1,12 +1,12 @@
 from utils.core import *
 import numpy as np
+from utils.utils import object_to_int
 
 def interact(agent, world):
     """Carries out interaction for this agent taking this action in this world.
 
     The action that needs to be executed is stored in `agent.action`.
     """
-
     # agent does nothing (i.e. no arrow key)
     if agent.action == (0, 0):
         return

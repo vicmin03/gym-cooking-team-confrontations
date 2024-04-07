@@ -151,6 +151,40 @@ class E2E_BRTDP:
 
         return output_actions
 
+    # def get_actions(self, state_repr):
+    #     """Returns list of possible actions from current state."""
+    #     if self.subtask is None:
+    #         return [(0, 0)]
+    #     # Convert repr into an environment object.
+    #     state = self.repr_to_env_dict[state_repr]
+
+    #     subtask_agents = self.get_subtask_agents(env_state=state)
+    #     output_actions = []
+
+    #     # Return single-agent actions.
+    #     if not self.is_joint:
+    #         agent = subtask_agents[0]
+    #         output_actions = nav_utils.get_single_actions(env=state, agent=agent)
+    #     # Return joint-agent actions.
+    #     else:
+    #         agent_1, agent_2 = subtask_agents
+    #         valid_actions = list(product(
+    #             nav_utils.get_single_actions(env=state, agent=agent_1),
+    #             nav_utils.get_single_actions(env=state, agent=agent_2)))
+    #         # Only consider action to be valid if agents do not collide.
+    #         for va in valid_actions:
+    #             agent1, agent2 = va
+    #             execute = state.is_collision(
+    #                     agent1_loc=agent_1.location,
+    #                     agent2_loc=agent_2.location,
+    #                     agent1_action=agent1,
+    #                     agent2_action=agent2)
+    #             if all(execute):
+    #                 output_actions.append(va)
+    #     return output_actions
+
+
+
 
     def runSampleTrial(self):
         """runSampleTrial from BRTDP paper."""
@@ -162,7 +196,7 @@ class E2E_BRTDP:
         counter = 0
         start_repr = self.start.get_repr()
         diff = self.v_u[(start_repr, self.subtask)] - self.v_l[(start_repr, self.subtask)]
-        # print("DIFF AT START: {}".format(diff))
+        print("DIFF AT START: {}".format(diff))
 
         while True:
             counter += 1
@@ -211,7 +245,7 @@ class E2E_BRTDP:
             self.repr_init(env_state=x)
             self.value_init(env_state=x)
 
-        # print("RUN SAMPLE EXPLORED {} STATES, took {}".format(len(traj), time.time()-start_time))
+        print("RUN SAMPLE EXPLORED {} STATES, took {}".format(len(traj), time.time()-start_time))
         while not(traj.empty()):
             x = traj.pop()
             x_repr = x.get_repr()
@@ -346,7 +380,8 @@ class E2E_BRTDP:
             self.cur_obj_count = len(list(filter(lambda a: (a.last_held != team), dishes)))
             
             self.is_goal_state = lambda h: self.has_less_obj(
-                    len(list(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj))))
+                 len(list(filter(lambda a: (a.last_held != team), map(lambda d: self.repr_to_env_dict[h].world.get_object_at(d, None, find_held_objects = False), self.repr_to_env_dict[h].world.get_object_locs(obj=self.goal_obj, is_held=False))))))
+
 
             self.has_less_obj = lambda x: int(x) < self.cur_obj_count
 
@@ -359,24 +394,37 @@ class E2E_BRTDP:
             # goal complete if count of ingredients + 1 and it is placed on a counter
         elif isinstance(subtask, Hoard):
             # finds locations of items on counters that were last held by this team
-            ingredient_locs= filter(lambda a: env.world.get_last_held_by_at(a) == team, set(env.world.get_object_locs(self.goal_obj, is_held=False)))
+            # ingredient_locs= filter(lambda a: env.world.get_last_held_by_at(a) == team, set(env.world.get_object_locs(self.goal_obj, is_held=False)))
             
-            self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), ingredient_locs)))
-            print("Currently", self.cur_obj_count, "at correct locations")
-            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            # self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), ingredient_locs)))
+            # print("Currently", self.cur_obj_count, "at correct locations")
+            # self.has_more_obj = lambda x: int(x) > self.cur_obj_count
 
             self.is_goal_state = lambda h: self.has_more_obj(len(list(filter
                 (lambda o: o in set(self.repr_to_env_dict[h].world.get_all_object_locs(self.subtask_action_obj)), 
                 filter(lambda a: self.repr_to_env_dict[h].world.get_last_held_by_at(a) == team, set(self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))))
 
-            if self.removed_object is not None and self.removed_object == self.goal_obj:
-                self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
-                    (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
-                    filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False))))))+1)
-            else:
-                self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
-                    (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
-                    filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False)))))))
+            # if self.removed_object is not None and self.removed_object == self.goal_obj:
+            #     self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
+            #         (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
+            #         filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False))))))+1)
+            # else:
+            #     self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
+            #         (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
+            #         filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False)))))))
+
+            self.cur_obj_count = len(
+                    list(filter(lambda o: o in set(env.world.get_all_object_locs(
+                            self.subtask_action_obj)),
+                    env.world.get_object_locs(self.goal_obj, is_held=False))))
+            print("Current count:", self.cur_obj_count)
+
+            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+            
+            self.is_subtask_complete = lambda w: self.has_more_obj(
+                len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)),
+                w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+
 
             # self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter(lambda a: (a.last_held != team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), set(w.get_object_locs(obj=self.goal_obj, is_held=False)))))))
 
@@ -537,7 +585,6 @@ class E2E_BRTDP:
                 for action in self.get_actions(state_repr=s_repr)])
         # Use upper bound on value function.
         elif _type == "upper":
-            print("IDK")
             return min([
                 self.Q(state=state, action=action, value_f=self.v_u)
                 for action in self.get_actions(state_repr=s_repr)])

@@ -288,16 +288,9 @@ def mergeable(obj1, obj2):
     # query whether two objects are mergeable
     contents = obj1.contents + obj2.contents
 
-    print("Contents are", contents)
-
     # can't merge two of the same object
     if obj1 == obj2:
         return False
-
-    # cant merge a plated version of an object with itself (unplated)
-        # check there is a plate
-        # if so, can't merge two objects
-
 
     # check that there is at most one plate
     try:
@@ -305,8 +298,9 @@ def mergeable(obj1, obj2):
     except:
         pass  # do nothing, 1 plate is ok
     finally:
+        # cant merge a plated version of an object with itself (unplated)
         if len(contents) >= 2:
-            if contents[0] == contents[1]:
+            if contents[0].rep == contents[1].rep:
                 return False
         try:
             contents.remove(Plate())

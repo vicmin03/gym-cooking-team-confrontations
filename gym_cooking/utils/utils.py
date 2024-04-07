@@ -1,3 +1,5 @@
+from utils.core import *
+
 def agent_settings(arglist, agent_name):
     if agent_name[-1] == "1": return arglist.model1
     elif agent_name[-1] == "2": return arglist.model2
@@ -9,8 +11,8 @@ def agent_settings(arglist, agent_name):
     elif agent_name[-1] == "8": return arglist.model8
     else: raise ValueError("Agent name doesn't follow the right naming, `agent-<int>`")
 
+# returns an integer according to the string representing an object
 def rep_to_int(rep: str):
-    # returns an integer according to the string representing an object
     if rep == 'a': return -1            # agent 
     elif rep == ' ': return 0           # floor (empty)
     elif rep == '-': return 1           # counter
@@ -28,8 +30,9 @@ def rep_to_int(rep: str):
     elif rep == 'p-t': return 13        # merged plate-tomato
     elif rep == 'S' : return 14         # storage space (for hoarding)
 
+
+# returns an integer according to the subtask 
 def subtask_to_int(subtask: str):
-    # returns an integer according to the subtask 
     if subtask.find('Chop') >= 0: return 1
     elif subtask.find('Merge') >= 0: return 2
     elif subtask.find('Deliver') >= 0: return 3
@@ -37,3 +40,29 @@ def subtask_to_int(subtask: str):
     elif subtask.find('Steal') >= 0: return 5
     elif subtask.find('Trash') >= 0: return 6
     else: return 0              # if no subtask
+
+
+# returns an integer according to the object
+def object_to_int(object: Object):
+    if object is None:
+        return 0
+    
+    rep = object.get_repr().name
+
+    if rep == "FreshTomato":
+        return 1
+    elif rep == "ChoppedTomato":
+        return 2
+    elif rep == "Plate-ChoppedTomato":
+        return 3
+    elif rep == "FreshLettuce":
+        return 4
+    elif rep == "ChoppedLettuce":
+        return 5
+    elif rep == "ChoppedLettuce-Plate":
+        return 6
+    elif rep == "ChoppedLettuce-Plate-ChoppedTomatoo":
+        return 7
+    elif rep == "Plate":
+        return 8
+    return 0

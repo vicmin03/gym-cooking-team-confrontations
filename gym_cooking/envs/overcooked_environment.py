@@ -16,7 +16,7 @@ from utils.core import *
 from utils.agent import SimAgent
 from misc.game.gameimage import GameImage
 from utils.agent import COLORS, TEAM_COLORS
-from utils.utils import rep_to_int
+from utils.utils import rep_to_int, object_to_int
 
 import copy
 import networkx as nx
@@ -64,11 +64,13 @@ class OvercookedEnvironment(gym.Env):
 
         # all possible actions in this environment
         self.action_space = Discrete(4)
-        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]      # actions down, up, right, left
 
     def get_repr(self):
         return self.world.get_repr() + tuple([agent.get_repr() for agent in self.sim_agents])
+    
+    def get_agents(self):
+        return tuple([agent.get_repr() for agent in self.sim_agents])
 
     def __str__(self):
         # Print the world and agents.
@@ -257,6 +259,7 @@ class OvercookedEnvironment(gym.Env):
         string_rep = self.world.string_rep
 
         for agent in self.sim_agents:
+            obs.append(object_to_int(agent.holding))
             string_rep[agent.location[1]][agent.location[0]] = 'a'
 
         for row in string_rep:
@@ -272,7 +275,6 @@ class OvercookedEnvironment(gym.Env):
         print("[environment.step] @ TIMESTEP {}".format(self.t))
         print("===============================")
 
-        # obs2 = []
         # Get actions.
         for sim_agent in self.sim_agents:
             sim_agent.action = action_dict[sim_agent.name]
@@ -281,12 +283,14 @@ class OvercookedEnvironment(gym.Env):
         self.check_collisions()
         self.obs_tm1 = copy.copy(self)
 
+        prev_agents = []
+
+        # get repr of agents before performing actions
+        for sim_agent in self.sim_agents:
+            prev_agents.append(sim_agent.get_repr())
+
         # Execute.
         self.execute_navigation()
-
-        # get locations of agents after performing actions
-        # for sim_agent in self.sim_agents:
-        #     obs2.append(sim_agent.location)
 
         # Visualize.
         # self.display()
@@ -304,7 +308,7 @@ class OvercookedEnvironment(gym.Env):
 
         done = self.done()
 
-        reward1, reward2 = self.reward(self.obs_tm1, new_obs, action_dict, agents)
+        reward1, reward2 = self.reward(self.obs_tm1, prev_agents, new_obs, action_dict, agents)
 
         # obs2 = self.create_obs()
 
@@ -312,7 +316,6 @@ class OvercookedEnvironment(gym.Env):
                 "image_obs": image_obs,
                 "done": done, "termination_info": self.termination_info}
         return new_obs, reward1, reward2, done, info
-        # return obs2, reward1, reward2, done, info
 
     def get_team1_score(self):
         return self.team1_score
@@ -325,6 +328,18 @@ class OvercookedEnvironment(gym.Env):
 
     def increase_team2_score(self, score):
         self.team2_score += score
+    
+    def get_agents_holding(self):
+        agents_holding = {}
+        for agent in self.get_agents():
+            agents_holding[agent.name] = agent.holding
+        return agents_holding
+    
+    def get_agents_locations(self):
+        agents_holding = {}
+        for agent in self.get_agents():
+            agents_holding[agent.name] = agent.location
+        return agents_holding
 
     def done(self):
         # Done if the episode maxes out
@@ -334,7 +349,6 @@ class OvercookedEnvironment(gym.Env):
             self.successful = False
             return True
         return False
-
 
     def delivered(self):
         for subtask in self.all_subtasks:
@@ -352,7 +366,7 @@ class OvercookedEnvironment(gym.Env):
         return delivered_1 > self.delivered1, delivered_2 > self.delivered2
             
     
-    def reward(self, old_obs, new_obs, action_dict, agents):
+    def reward(self, old_obs, prev_agents, new_obs, action_dict, agents):
        # rewards for each team depending if something was delivered
         r1, r2 = 0, 0
         score1, score2 = self.delivered()
@@ -367,14 +381,14 @@ class OvercookedEnvironment(gym.Env):
         for agent in agents:
             if agent.model_type == 'madqn':
                 if agent.team == 1:
-                    r1 += agent.get_reward(old_obs, new_obs)
+                    r1 += agent.get_reward(action_dict, prev_agents, old_obs, new_obs)
                 elif agent.team == 2:
-                    r2 += agent.get_reward(old_obs, new_obs)
+                    r2 += agent.get_reward(action_dict, prev_agents, old_obs, new_obs)
             # else:
             #     if agent.team == 1:
-            #         r1 += agent.compute_reward(old_obs, new_obs)
+            #         r1 += agent.get_reward(action_dict, old_obs, new_obs)
             #     elif agent.team == 2:
-            #         r2 += agent.compute_reward(old_obs, new_obs)
+            #         r2 += agent.get_reward(action_dict, old_obs, new_obs)
             #     # def get_reward(self, old_obs, new_obs, subtask, goal_loc):
             
         
@@ -460,17 +474,6 @@ class OvercookedEnvironment(gym.Env):
             # for team_agent in agent_locs:
             #     nearby_locs += list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs))
             
-            # B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
-
-            # max_x, max_y = self.world.width-1, self.world.height-1
-
-            # unreachable = [(0, 0), (max_x, 0), (0, max_y), (max_x, max_y)]
-            # # cannot access counters at the corner of maps, so remove these 
-            # B_locs = list(filter(lambda a: a not in unreachable, B_locs))
-            
-            # if len(B_locs) == 0:   
-            #     B_locs = agent_locs
-
             # can hoard at storage spaces where there isn't already an object
             B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), self.world.get_all_object_locs(obj=subtask_action_obj)))
 
@@ -478,7 +481,7 @@ class OvercookedEnvironment(gym.Env):
             # Locations of spawn counters to get ingredients   
             ingredient_locs = list(filter(lambda a: isinstance(self.world.get_gridsquare_at(a), SpawnCounter), 
                                 self.world.get_object_locs(obj=start_obj, is_held=False))) + list(map(lambda a: a.location, list(
-                                filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
+                                filter(lambda a: a.name in subtask_agent_names and a.team == agent.team and a.holding == start_obj, self.sim_agents))))
 
             # filter out those we already hoarded (last held by the team) 
             A_locs = list(filter(lambda a: self.world.get_last_held_by_at(a)!= agent.team, ingredient_locs))

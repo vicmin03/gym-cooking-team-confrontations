@@ -170,26 +170,7 @@ def initialize_buffer(env, obs, madqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE):
 # def train(env, agents, gamma, batch_size, buffer_size, min_replay_size, epsilon_start, epsilon_end, decay, target_update_freq):
 
 def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_loss):
-    # samples BATCH_SIZE number of transitions from the replay buffer into a list 
-    transitions = random.sample(replay_buffer, BATCH_SIZE)
 
-    # extract each part from the transition tuples into their own np array
-        # observations should only contain agent's own subtask (cannot know other agent's subtasks)
-    observations = np.asarray([t[0] for t in transitions])
-    actions = np.asarray([t[1] for t in transitions])
-    rewards1 = np.asarray([t[2] for t in transitions])
-    rewards2 = np.asarray([t[3] for t in transitions])
-    dones = np.asarray([t[4] for t in transitions])
-    new_observations = np.asarray([t[5] for t in transitions])
-
-    # turning into tensors
-    observations_t = T.as_tensor(observations, dtype=T.float32) 
-    actions_t = T.as_tensor(actions, dtype=T.int64).unsqueeze(-1)
-    rewards1_t = T.as_tensor(rewards1, dtype=T.float32).unsqueeze(-1)
-    rewards2_t = T.as_tensor(rewards2, dtype=T.float32).unsqueeze(-1)
-    dones_t = T.as_tensor(dones, dtype=T.float32).unsqueeze(-1)
-    new_observations_t = T.as_tensor(new_observations, dtype=T.float32)
-    
     loss_arr = []
 
     # Compute Targets
@@ -197,11 +178,30 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
     for i in range (0, len(dqn_agents)):
         agent = dqn_agents[i]
         if agent.model_type == 'madqn':
+            # samples BATCH_SIZE number of transitions from the replay buffer into a list 
+            transitions = random.sample(replay_buffer, BATCH_SIZE)
+
+            # extract each part from the transition tuples into their own np array
+                # observations should only contain agent's own subtask (cannot know other agent's subtasks)
+            observations = np.asarray([t[0] for t in transitions])
+            actions = np.asarray([t[1] for t in transitions])
+            rewards1 = np.asarray([t[2] for t in transitions])
+            rewards2 = np.asarray([t[3] for t in transitions])
+            dones = np.asarray([t[4] for t in transitions])
+            new_observations = np.asarray([t[5] for t in transitions])
+
+            # turning into tensors
+            observations_t = T.as_tensor(observations, dtype=T.float32) 
+            actions_t = T.as_tensor(actions, dtype=T.int64).unsqueeze(-1)
+            rewards1_t = T.as_tensor(rewards1, dtype=T.float32).unsqueeze(-1)
+            rewards2_t = T.as_tensor(rewards2, dtype=T.float32).unsqueeze(-1)
+            dones_t = T.as_tensor(dones, dtype=T.float32).unsqueeze(-1)
+            new_observations_t = T.as_tensor(new_observations, dtype=T.float32)
+
             my_observations = np.asarray([np.concatenate(([observation[i]], observation[len(dqn_agents):])) for observation in observations])
             my_observations_t = T.as_tensor(my_observations, dtype=T.float32) 
 
             my_new_observations = np.asarray([np.concatenate(([observation[i]], observation[len(dqn_agents):])) for observation in new_observations])
-
             my_new_observations_t = T.as_tensor(my_new_observations, dtype=T.float32) 
 
             # passing in observations of this agent's subtask only
@@ -209,7 +209,8 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
                 # max returns a tuple with (highest_val, index)
             max_target_q_values = target_q_values.max(dim=1, keepdim=True)[0]
 
-            # choose to use the rewards tensor of their own team only 
+            # calculate the target q value using Bellman's equation
+                # choose to use the rewards of their own team only 
             if agent.team == 1:
                 targets = rewards1_t * GAMMA * (1- dones_t) * max_target_q_values
             elif agent.team == 2:
@@ -226,7 +227,7 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
             # this applies the index of the actions taken by the agent (my_actions_t) to get the q_value for that action
             action_q_values = T.gather(input=q_values, dim=1, index=my_actions_t)
 
-            # compute the loss with huber loss function
+            # compute the loss with huber loss function - difference between our predicted q_values and the targets
             loss = nn.functional.smooth_l1_loss(action_q_values, targets)
 
             loss_arr.append(loss)
@@ -236,28 +237,34 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
             loss.backward()
             agent.optimizer.step()
 
-            # Update Target Network parameters
-            if step % TARGET_UPDATE_FREQ == 0:
-                # updates the target network params to be the same as the online network
-                agent.target_net.load_state_dict(agent.online_net.state_dict())
+            # # Update Target Network parameters
+            # if step % TARGET_UPDATE_FREQ == 0:
+            #     # updates the target network params to be the same as the online network
+            #     agent.target_net.load_state_dict(agent.online_net.state_dict())
+
+
+            # Soft target network updates
+            update_tau = 0.001
+            for target_param, online_param in zip(agent.target_net.parameters(), agent.online_net.parameters()):
+                target_param.data.copy_(update_tau * online_param.data + (1.0 - update_tau) * target_param.data)
 
     avg_loss.append(np.mean([loss.detach().numpy() for loss in loss_arr]))
 
-def plot_loss_graph(avg_loss, cumulative_r1, cumulative_r2):
-    plt.plot(cumulative_r1, label='Reward for team 1')
-    plt.plot(cumulative_r2, label='Reward for team 2')
+def plot_loss_graph(avg_loss, avg_reward1, avg_reward2):
+    plt.plot(avg_reward1, label='Reward for team 1')
+    plt.plot(avg_reward2, label='Reward for team 2')
     plt.xlabel('Training Iteration')
-    plt.ylabel('Cumulative')
-    plt.title("Learning Curve - Reward")
+    plt.ylabel('Average Reward')
+    plt.title("Learning Curve - Average Reward")
     plt.legend()
-    plt.savefig('Rewards Curve')
+    plt.savefig('rewards_curve')
 
     plt.plot(avg_loss, label='Loss')
     plt.xlabel('Training Iteration')
     plt.ylabel('Loss')
-    plt.title("Learning Curve")
+    plt.title("Learning Curve - Loss")
     plt.legend()
-    plt.savefig('Loss Curve')
+    plt.savefig('loss_curve')
     
 
 
@@ -267,7 +274,7 @@ GAMMA = 0.99     # the discount rate
 # ALPHA = 5e-4       # the learning rate (for dqn)
 BATCH_SIZE = 100    # no of samples we sample from the memory buffer
 BUFFER_SIZE = 50000     # the max no. of samples stores in the buffer before overriding old transitions
-MIN_REPLAY_SIZE = 1000     # the no. of transitions we need in repay buffer before training can begin
+MIN_REPLAY_SIZE = 100     # the no. of transitions we need in repay buffer before training can begin
 EPSILON_START = 1.0
 EPSILON_END = 0.02
 EPSILON_DECAY = 10000   # epsilon decreases from start_val to end_val over this many steps
@@ -276,8 +283,8 @@ TARGET_UPDATE_FREQ = 250   # how many steps before target network params are upd
 
 # ---- For Metrics ---------------------------------
 avg_loss = []
-cumulative_r1 = [0]
-cumulative_r2 = [0]
+avg_reward1 = []
+avg_reward2 = []
 
 # average_q = get_q_values()/len(get_q_values())
 
@@ -382,10 +389,8 @@ if __name__ == '__main__':
 
                 # save the rewards for each team in reward buffer
                 reward_buffer.append((team1_reward, team2_reward))  
-                # cumulative_r1.append(cumulative_r1[-1] + team1_reward)
-                # cumulative_r2.append(cumulative_r2[-1] + team2_reward)
-                cumulative_r1.append(np.mean([reward[0] for reward in reward_buffer]))
-                cumulative_r2.append(np.mean([reward[1] for reward in reward_buffer]))
+                avg_reward1.append(np.mean([reward[0] for reward in reward_buffer]))
+                avg_reward2.append(np.mean([reward[1] for reward in reward_buffer]))
 
                 team1_reward = 0
                 team2_reward = 0
@@ -409,11 +414,8 @@ if __name__ == '__main__':
                         sum1 += reward[0]
                         sum2 += reward[1]
                         
-                    print("Average Reward for team 1: ", np.mean(reward[0] for reward in reward_buffer))
                     print("Average Reward for team 1: ", sum1/len(reward_buffer))
                     print("Average Reward for team 2: ", sum2/len(reward_buffer))
-
-                # print(step)
 
             for agent in real_agents:
                 if agent.model_type == 'madqn':
@@ -426,16 +428,11 @@ if __name__ == '__main__':
             action_dict = {}
 
             for agent in real_agents:
-                # if agent.model_type == 'madqn':
-                #     action = agent.select_action(obs)
-
-                # else:
                 action = agent.select_action(obs=obs)
                 print(agent.name, "is going to take", str(action))
                 action_dict[agent.name] = action
 
             obs, reward1, reward2, done, info = env.step(action_dict=action_dict, agents=real_agents)
-
             # Agents
             for agent in real_agents:
                 # agent.refresh_subtasks(world=env.world)

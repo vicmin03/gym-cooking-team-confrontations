@@ -15,15 +15,14 @@ class Network(nn.Module):
         in_features = 1
         for i in env.observation_space.shape:
             in_features *= i
-        # in_features += len(env.get_agent_names())
-        in_features += 1    # add the subtask of the relevant agent
+        in_features += len(env.get_agent_names())   # adds number of agents as observation consists of the items being held by each
+        # in_features += 1    # add the subtask of the relevant agent
         
         self.net = nn.Sequential(
             nn.Linear(in_features, 64),            # input layer
             nn.Tanh(),
             # no. of outputs = the number of possible actions in the env space
             nn.Linear(64, env.action_space.n)
-            # nn.Linear(64, 5)
         )
         
         # path where parameters are saved to and loaded from
@@ -39,8 +38,9 @@ class Network(nn.Module):
         obs_t = T.as_tensor(obs_v, dtype=T.float32)
 
         # calculate the q values for actions from this observation 
-            # need unsequeeze to get batch dimension?
         q_values = self(obs_t.unsqueeze(0))
+
+        print("Q_values are", q_values)
 
         max_q_index = T.argmax(q_values, dim=1)[0]
         action = max_q_index.detach().item()
