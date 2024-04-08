@@ -290,6 +290,11 @@ avg_reward2 = []
 
 
 if __name__ == '__main__':
+    # if T.cuda.is_available():
+    #     device = T.device('cuda')
+    # else:
+    #     device = T.device('cpu')
+
     arglist = parse_arguments()
 
     if arglist.play:

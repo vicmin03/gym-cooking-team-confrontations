@@ -196,6 +196,12 @@ class OvercookedEnvironment(gym.Env):
         self.world.width = x+1
         self.world.height = y
         self.world.perimeter = 2*(self.world.width + self.world.height)
+        tomato = Object(location=(0, 1), contents=RepToClass['t']())
+        tomato.last_held = 1
+        
+        counter = self.world.get_gridsquare_at((0, 1))
+        counter.acquire(tomato)
+        self.world.insert(tomato)
 
         self.observation_space = (Box(low=0, high=2, shape=(self.world.height, self.world.width), dtype=np.int32))
 
@@ -283,12 +289,6 @@ class OvercookedEnvironment(gym.Env):
         self.check_collisions()
         self.obs_tm1 = copy.copy(self)
 
-        prev_agents = []
-
-        # get repr of agents before performing actions
-        for sim_agent in self.sim_agents:
-            prev_agents.append(sim_agent.get_repr())
-
         # Execute.
         self.execute_navigation()
 
@@ -308,9 +308,7 @@ class OvercookedEnvironment(gym.Env):
 
         done = self.done()
 
-        reward1, reward2 = self.reward(self.obs_tm1, prev_agents, new_obs, action_dict, agents)
-
-        # obs2 = self.create_obs()
+        reward1, reward2 = self.reward(self.obs_tm1, new_obs, action_dict, agents)
 
         info = {"t": self.t, "obs": new_obs,
                 "image_obs": image_obs,
@@ -366,7 +364,7 @@ class OvercookedEnvironment(gym.Env):
         return delivered_1 > self.delivered1, delivered_2 > self.delivered2
             
     
-    def reward(self, old_obs, prev_agents, new_obs, action_dict, agents):
+    def reward(self, old_obs, new_obs, action_dict, agents):
        # rewards for each team depending if something was delivered
         r1, r2 = 0, 0
         score1, score2 = self.delivered()
@@ -379,11 +377,11 @@ class OvercookedEnvironment(gym.Env):
 
         # get reward for each agent completing a subtask, then combine rewards for agents on the same team
         for agent in agents:
-            if agent.model_type == 'madqn':
-                if agent.team == 1:
-                    r1 += agent.get_reward(action_dict, prev_agents, old_obs, new_obs)
-                elif agent.team == 2:
-                    r2 += agent.get_reward(action_dict, prev_agents, old_obs, new_obs)
+            # if agent.model_type == 'madqn':
+            if agent.team == 1:
+                r1 += agent.get_reward(action_dict, old_obs, new_obs)
+            elif agent.team == 2:
+                r2 += agent.get_reward(action_dict, old_obs, new_obs)
             # else:
             #     if agent.team == 1:
             #         r1 += agent.get_reward(action_dict, old_obs, new_obs)
@@ -435,7 +433,8 @@ class OvercookedEnvironment(gym.Env):
         all_subtasks = [subtask for path in subtasks for subtask in path]
 
         # adding confrontation tasks to possible subtasks
-        all_subtasks += self.recipes[0].get_con_actions()
+        for recipe in self.recipes:
+            all_subtasks += recipe.get_con_actions()
         # print("HERE ARE ALL SUBTASKS: ", all_subtasks)
         return all_subtasks
         

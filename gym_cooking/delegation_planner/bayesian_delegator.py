@@ -167,10 +167,10 @@ class BayesianDelegator(Delegator):
             for t in subtask_alloc:
                 if t.subtask is not None:
                     # Calculate prior with this agent's planner.
-                    total_weight += 1.0 / float(self.get_lower_bound_for_subtask_alloc(
-                        obs=copy.copy(obs),
-                        subtask=t.subtask,
-                        subtask_agent_names=t.subtask_agent_names))
+                    total_weight += 1.0/float(self.get_lower_bound_for_subtask_alloc(
+                    obs=copy.copy(obs),
+                    subtask=t.subtask,
+                    subtask_agent_names=t.subtask_agent_names))
             # Weight by number of nonzero subtasks.
             some_probs.update(
                     subtask_alloc=subtask_alloc,

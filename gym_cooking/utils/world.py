@@ -188,7 +188,6 @@ class World:
             if bound < lower_bound:
                 lower_bound = bound
 
-    
         return max(1, lower_bound)
 
     def check_bound(self, min_bound_to_A, min_bound_to_B,

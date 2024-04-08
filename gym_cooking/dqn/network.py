@@ -28,7 +28,7 @@ class Network(nn.Module):
         # path where parameters are saved to and loaded from
         self.path = path
 
-
+    # pass input to network to generate q-values for each potential action
     def forward(self, x):
         return self.net(x)
     

@@ -517,6 +517,7 @@ class E2E_BRTDP:
         return es_repr
 
     def value_init(self, env_state):
+
         """Initialize value for environment state."""
         # Skip if already initialized.
         es_repr = env_state.get_repr()

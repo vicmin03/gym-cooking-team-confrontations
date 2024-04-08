@@ -131,6 +131,8 @@ def initialize_agents(arglist, env):
 def initialize_buffer(env, obs, madqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE):
     replay_buffer = deque(maxlen=BUFFER_SIZE)
 
+    count_buffer = {}
+
     # Initialise replay buffer by randomly choosing actions in the environment and saving rewards
     for i in range (MIN_REPLAY_SIZE):
         action_dict = {}
@@ -142,15 +144,25 @@ def initialize_buffer(env, obs, madqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE):
             action_dict[agent.name] = env.possible_actions[action]
             action_arr.append(action)
 
+            obs_str = str(tuple(obs.create_obs()))
+            # keep track of counts of agents taking given action from a state
+            try:
+                count_buffer[obs_str][action] = count_buffer.get(obs_str, np.zeros(4))[action] + 1
+            except:
+                count_buffer[obs_str] = np.zeros(4)
+                count_buffer[obs_str][action] = count_buffer.get(obs_str, np.zeros(4))[action] + 1
+
+        
+        print("HERE ARE THE COUNTS:", count_buffer)
         # get observation from performing actions
         new_obs, reward1, reward2, done, info = env.step(action_dict, madqn_agents)
 
         # save transition as record in replay buffer
         transition = (obs.create_obs(), np.asarray(action_arr), reward1, reward2, done, new_obs.create_obs())
+
     
         replay_buffer.append(transition)
         obs = new_obs
-
         if done:
             obs = env.reset()
 
@@ -159,14 +171,16 @@ def initialize_buffer(env, obs, madqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE):
 
 # def train(env, agents, gamma, batch_size, buffer_size, min_replay_size, epsilon_start, epsilon_end, decay, target_update_freq):
 
-def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_loss):
+def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_loss, avg_qs):
 
     loss_arr = []
+    q_vals = []
 
     # Compute Targets
         # gets a set of q values for each observation, with q as the first dimension
     for i in range (0, len(dqn_agents)):
         agent = dqn_agents[i]
+
         if agent.model_type == 'madqn':
             # samples BATCH_SIZE number of transitions from the replay buffer into a list 
             transitions = random.sample(replay_buffer, BATCH_SIZE)
@@ -189,12 +203,6 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
             dones_t = T.as_tensor(dones, dtype=T.float32).unsqueeze(-1)
             new_observations_t = T.as_tensor(new_observations, dtype=T.float32)
 
-            # my_observations = np.asarray([np.concatenate(([observation[i]], observation[len(dqn_agents):])) for observation in observations])
-            # my_observations_t = T.as_tensor(my_observations, dtype=T.float32) 
-
-            # my_new_observations = np.asarray([np.concatenate(([observation[i]], observation[len(dqn_agents):])) for observation in new_observations])
-            # my_new_observations_t = T.as_tensor(my_new_observations, dtype=T.float32) 
-
             # passing in observations of this agent's subtask only
             target_q_values = agent.target_net(new_observations_t)
                 # max returns a tuple with (highest_val, index)
@@ -215,8 +223,9 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
             my_actions = [action[i] for action in actions]
             my_actions_t = T.as_tensor(my_actions, dtype=T.int64).unsqueeze(-1)
 
-            # this applies the index of the actions taken by the agent (my_actions_t) to get the q_value for that action
+            # this applies the index of the actions taken by the agent (my_actions_t) to get the q_values for those actions
             action_q_values = T.gather(input=q_values, dim=1, index=my_actions_t)
+            q_vals.append(action_q_values)
 
             # compute the loss with huber loss function - difference between our predicted q_values and the targets
             loss = nn.functional.smooth_l1_loss(action_q_values, targets)
@@ -233,14 +242,15 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
                 # updates the target network params to be the same as the online network
                 agent.target_net.load_state_dict(agent.online_net.state_dict())
 
-            # Soft target network updates
+            # # Soft target network updates
             # update_tau = 0.001
             # for target_param, online_param in zip(agent.target_net.parameters(), agent.online_net.parameters()):
             #     target_param.data.copy_(update_tau * online_param.data + (1.0 - update_tau) * target_param.data)
 
     avg_loss.append(np.mean([loss.detach().numpy() for loss in loss_arr]))
+    avg_qs.append((np.mean([qval.detach().numpy() for qval in q_vals])))
 
-def plot_loss_graph(avg_loss, avg_reward1, avg_reward2):
+def plot_loss_graph(avg_loss, avg_reward1, avg_reward2, avg_qvals):
     plt.plot(avg_reward1, label='Reward for team 1')
     plt.plot(avg_reward2, label='Reward for team 2')
     plt.xlabel('Training Iteration')
@@ -248,6 +258,14 @@ def plot_loss_graph(avg_loss, avg_reward1, avg_reward2):
     plt.title("Learning Curve - Reward")
     plt.legend()
     plt.savefig('Rewards Curve')
+    plt.show()
+
+    plt.plot(avg_qvals, label='Average Q-_value')
+    plt.xlabel('Training Iteration')
+    plt.ylabel('Average Q-value')
+    plt.title("Learning Curve - Q-values")
+    plt.legend()
+    plt.savefig('Q-values Curve')
     plt.show()
 
     plt.plot(avg_loss, label='Loss')
@@ -265,11 +283,11 @@ GAMMA = 0.99     # the discount rate
 # ALPHA = 5e-4       # the learning rate (for dqn)
 BATCH_SIZE = 500    # no of samples we sample from the memory buffer
 BUFFER_SIZE = 50000     # the max no. of samples stores in the buffer before overriding old transitions
-MIN_REPLAY_SIZE = 1000     # the no. of transitions we need in repay buffer before training can begin
+MIN_REPLAY_SIZE = 500     # the no. of transitions we need in repay buffer before training can begin
 EPSILON_START = 1.0
 EPSILON_END = 0.02
-EPSILON_DECAY = 10000   # epsilon decreases from start_val to end_val over this many steps
-TARGET_UPDATE_FREQ = 1000   # how many steps before target network params are updated from online parameters
+EPSILON_DECAY = 100000   # epsilon decreases from start_val to end_val over this many steps
+TARGET_UPDATE_FREQ = 10000   # how many steps before target network params are updated from online parameters
 
 
 # ---- For Metrics ---------------------------------
@@ -277,10 +295,12 @@ avg_loss = []
 avg_reward1 = []
 avg_reward2 = []
 
-# average_q = get_q_values()/len(get_q_values())
+avg_qs = []
 
 
 if __name__ == '__main__':
+    device = T.device("cuda" if T.cuda.is_available() else "cpu")
+
     arglist = parse_arguments()
 
     if arglist.play:
@@ -292,6 +312,7 @@ if __name__ == '__main__':
 
         GAMMA = arglist.gamma
         BATCH_SIZE = arglist.batch_size
+        EPSILON_DECAY = arglist.training_steps
 
         env = gym.envs.make("gym_cooking:overcookedEnv-v0", arglist=arglist)
         obs = env.reset()
@@ -351,8 +372,11 @@ if __name__ == '__main__':
                             action = env.possible_actions[env.action_space.sample()]
                         else:
                             # or intelligently choose an action based on learning
+                            # if epsilon == 0:
+                            #     with T.no_grad():   #?????????????????
                             action = agent.select_action(obs=obs)
-                        
+                            # else:
+                            #     action = agent.select_action(obs=obs)
                     else:
                         action = agent.select_action(obs=obs)
                     action_dict[agent.name] = action
@@ -382,7 +406,7 @@ if __name__ == '__main__':
 
                 # ---- Gradient Step ----------
                     # parameters of networks are updated based on training
-                update(env, real_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_loss)
+                update(env, real_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_loss, avg_qs)
 
                 # TODO: Save nn params
 
@@ -404,7 +428,7 @@ if __name__ == '__main__':
                 if agent.model_type == 'madqn':
                     agent.online_net.save_params(arglist.level)
 
-            plot_loss_graph(avg_loss, avg_reward1, avg_reward2)
+            plot_loss_graph(avg_loss, avg_reward1, avg_reward2, avg_qs)
 
 
         # ---- RUNNING A GAME ---------------------------------
