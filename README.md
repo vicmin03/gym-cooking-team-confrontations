@@ -2,15 +2,13 @@
 
 [[Full paper]](https://arxiv.org/abs/2003.11778) [[Journal paper]](https://onlinelibrary.wiley.com/doi/10.1111/tops.12525) [[Video]](https://www.youtube.com/watch?v=Fd4RcVaNthY&ab_channel=RoseWang)
 
-Code for "Too many cooks: Bayesian inference for coordinating multi-agent collaboration", Winner of the CogSci 2020 Computational Modeling Prize in High Cognition, and a NeurIPS 2020 CoopAI Workshop Best Paper. 
+Code for undergraduate project 'Overcooked!: Developing diverse cooking tasks for multi-agent cooperation and team confrontations
 
 
 Contents:
 - [Introduction](#introduction)
 - [Installation](#installation)
-- [Usage](#usage)
-- [Environments and Recipes](docs/environments.md)
-- [Design and Customization](docs/design.md)
+- [Running experiments](#experiments)
 
 ## Introduction
 
@@ -48,8 +46,7 @@ pip3 install -e .
 
 All experiments have been run with `python3`! 
 
-## Usage 
-
+## Running experimnts
 Here, we discuss how to run a single experiment, run our code in manual mode, and re-produce results in our paper. For information on customizing environments, observation/action spaces, and other details, please refer to our section on [Design and Customization](docs/design.md)
 
 For the code below, make sure that you are in **gym-cooking/gym_cooking/**. This means, you should be able to see the file `main.py` in your current directory.

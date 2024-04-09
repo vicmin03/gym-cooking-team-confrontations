@@ -194,23 +194,31 @@ class RealAgent:
                 self.incomplete_subtasks.remove(self.subtask)
                 self.subtask_complete = True
 
-                # # if agent completed a task, return a reward
-                self.reward = self.get_reward(self.subtask, env, env)
+            # check that the remaining subtasks are actually doable - if can't do any of them, reset subtasks 
+            can_do_tasks = False
+            for subtask in self.incomplete_subtasks:
+                if self.is_subtask_doable(env=env, subtask=subtask):
+                    can_do_tasks = True
+                    break
+            if not can_do_tasks:
+                self.reset_subtasks()
+                self.incomplete_subtasks = self.get_subtasks(env.world)
+
             # if no more subtasks and there is stock left in the world, re-add chop-merge-deliver subtasks
             if len(self.incomplete_subtasks) == 1:
-
                 keep_cooking = True
                 for ingredient in self.ingredients:
                     if ingredient == "Plate":
                         obj = nav_utils.get_obj(obj_string="Plate", type_="is_object", state=None)
                     else:
-                        obj = nav_utils.get_obj(obj_string=ingredient, type_="is_object", state=FoodState.FRESH)
+                        obj = nav_utils.get_obj(obj_string=ingredient.name, type_="is_object", state=FoodState.FRESH)
                     print("Stock of ingredient", ingredient, "is", len(env.world.get_object_locs(obj=obj, is_held=False)))
                     if len(env.world.get_object_locs(obj=obj, is_held=False)) == 0:
                         keep_cooking = False
                 if keep_cooking:
                     self.reset_subtasks()
                     self.incomplete_subtasks = self.get_subtasks(env.world)
+
         print('{} incomplete subtasks:'.format(
             (self.name, self.color)),
             ', '.join(str(t) for t in self.incomplete_subtasks))
@@ -420,7 +428,7 @@ class RealAgent:
             return old_obj_count < len(new_obs.world.get_all_object_locs(obj=goal_obj))
 
 
-    def subtask_is_doable(self, env, subtask):
+    def is_subtask_doable(self, env, subtask):
         """Return whether this agent can do a subtask in the current environment state."""
         # Doing nothing is always possible.
         if subtask is None:
@@ -450,60 +458,6 @@ class RealAgent:
         return distance < env.world.perimeter
 
 
-    # def get_reward_for_subtask(self, subtask, old_loc, new_loc, prev_holding, new_holding, new_obs, value):
-    #     # give reward based on distance from the goal location and holding the correct obj
-    #     start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=subtask)
-    #     subtask_action_obj = nav_utils.get_subtask_action_obj(subtask=subtask, team=self.team)
-
-    #     sim_agent = list(filter(lambda x: x.name == self.name, new_obs.sim_agents))[0]
-    #     self.location = sim_agent.location
-    #     self.holding = sim_agent.holding
-    #     self.action = sim_agent.action
-
-    #     A_locs, B_locs = new_obs.get_AB_locs_given_objs(
-    #         subtask=subtask,
-    #         agent = self,
-    #         subtask_agent_names=self.name,
-    #         start_obj=start_obj,
-    #         goal_obj=goal_obj,
-    #         subtask_action_obj=subtask_action_obj)
-        
-    #     if len(A_locs) == 0 or len(B_locs) == 0:
-    #         return 0
-
-    #     reward = 0
-
-    #     # if moved closer to subtask goal, then positive reward
-    #     if self.holding == start_obj:
-    #         # print("I'm holding the right thing, now I gotta go to ", B_locs)
-    #         old_dist = np.min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in B_locs])
-    #         new_dist = np.min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in B_locs])
-    #     else:
-    #         old_dist = min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in A_locs])
-    #         new_dist = min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in A_locs])
-
-    #     # if picked up necessary object, positive reward
-    #     if prev_holding != new_holding:
-    #         if new_holding == start_obj or new_holding == goal_obj:
-    #             reward += 20
-    #         # else:
-    #         #     reward -= 3
-
-    #     # if self.holding == start_obj:
-    #     #     new_dist = np.min([abs(loc[0]-self.location[0])+abs(loc[1]-self.location[1]) for loc in B_locs])
-    #     # else:
-    #     #     new_dist = np.min([abs(loc[0]-self.location[0])+abs(loc[1]-self.location[1]) for loc in A_locs])
-    #     if new_dist < old_dist:
-    #         reward += value/5
-    #     else:
-    #         reward -= value/3
-    #     return reward
-    #     # if new_dist > 0:
-    #     #     reward += value/new_dist
-    #     # else:
-    #     #     reward += value
-    #     # return reward
-
     def get_reward_for_subtask(self, subtask, old_loc, new_loc, prev_holding, new_holding, new_obs, value):
         # give reward based on distance from the goal location and holding the correct obj
         start_obj, goal_obj = nav_utils.get_subtask_obj(subtask=subtask)
@@ -524,40 +478,59 @@ class RealAgent:
         
         # print("for", subtask, "want start objects", start_obj, "and goal object", goal_obj, "between ", A_locs, "and", B_locs)
         
-        if len(A_locs) == 0 or len(B_locs) == 0:
-            return 0
+        # if len(A_locs) == 0 or len(B_locs) == 0:
+        #     return 0
 
+        if isinstance(subtask, recipe_utils.Merge):
+            start_obj_name = [start_obj[0].get_repr().name, start_obj[1].get_repr().name]
+        else:
+            start_obj_name = start_obj.get_repr().name
+
+        
         # if moved closer to subtask goal, then positive reward]
         if isinstance(subtask, recipe_utils.Merge):
-            if self.holding == start_obj[0] or self.holding == start_obj[1]:
+            if new_holding == start_obj_name[0]:
                 old_dist = np.min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in B_locs])
                 new_dist = np.min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in B_locs])
-        if self.holding == start_obj:
-            # print("I'm holding the right thing, now I gotta go to ", B_locs)
-            old_dist = np.min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in B_locs])
-            new_dist = np.min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in B_locs])
+                goal_locs = B_locs
+            else:
+                old_dist = np.min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in A_locs])
+                new_dist = np.min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in A_locs])
+                goal_locs = A_locs
         else:
-            old_dist = min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in A_locs])
-            new_dist = min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in A_locs])
+            if new_holding == start_obj_name:
+                # print("I'm holding the right thing, now I gotta go to ", B_locs)
+                old_dist = np.min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in B_locs])
+                new_dist = np.min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in B_locs])
+                goal_locs = B_locs
+            else:
+                old_dist = min([abs(loc[0]-old_loc[0])+abs(loc[1]-old_loc[1]) for loc in A_locs])
+                new_dist = min([abs(loc[0]-new_loc[0])+abs(loc[1]-new_loc[1]) for loc in A_locs])
+                goal_locs = A_locs
 
         # if picked up necessary object, positive reward
         if prev_holding != new_holding:
-            if new_holding == start_obj or new_holding == goal_obj:
-                return value + 3
+            if isinstance(subtask, recipe_utils.Merge):
+                if new_holding in start_obj_name or new_holding == goal_obj.get_repr().name:
+                    return value + 2
+            else:
+                if new_holding == start_obj.get_repr().name or new_holding == goal_obj.get_repr().name:
+                    return value + 2
 
+        
         if new_dist < old_dist:
+            print("Just moved closer for subtask", subtask, "cos distance between", old_loc, "and ", goal_locs, "was", old_dist, "vs new min dist from", new_loc, "is", new_dist)
             return value
         else:
+            print("Just moved away from subtask", subtask, "cos distance between", old_loc, "and ", goal_locs, "was", old_dist, "vs new min dist from", new_loc, "is", new_dist)
             return 0
-        return 0
 
 
 
     def get_reward(self, actions, old_obs, new_obs):
         reward = 0
-
-        rewards_dict = {recipe_utils.Chop: 1, recipe_utils.Merge: 3, recipe_utils.Deliver: 5, recipe_utils.Hoard: 0.25, recipe_utils.Steal: 2, recipe_utils.Trash: -0.5}
-        # rewards_dict = {recipe_utils.Chop: 15, recipe_utils.Merge: 50, recipe_utils.Deliver: 100, recipe_utils.Hoard: 2, recipe_utils.Steal: 30, recipe_utils.Trash: 3}
+        priority = [recipe_utils.Deliver, recipe_utils.Steal, recipe_utils.Merge, recipe_utils.Chop, recipe_utils.Hoard, recipe_utils.Trash]
+        rewards_dict = {recipe_utils.Chop: 1, recipe_utils.Merge: 3, recipe_utils.Deliver: 5, recipe_utils.Hoard: 0.1, recipe_utils.Steal: 2, recipe_utils.Trash: -0.5}
 
         prev_location = old_obs.get_agents_locations()[self.name]
         new_location = new_obs.get_agents_locations()[self.name]
@@ -567,9 +540,9 @@ class RealAgent:
         new_holding = new_obs.get_agents_holding()[self.name]
         # print(prev_holding, "now", new_holding)
 
-        # reward for picking up something, but not if holding same object and not moving
+        # penalised for staying still and making no progress
         if prev_location == new_location and prev_holding == new_holding:
-            return -1    # penalised for staying still and making no progress
+            return -1    
 
         # the rewards for being close to completing whatever subtask - get the highest reward
         subtask_rewards = []
@@ -579,14 +552,17 @@ class RealAgent:
 
         for subtask in self.all_subtasks:
             if self.check_subtask_complete(subtask, old_obs, new_obs):
+                print("YAYY Completed subtask", subtask, "so getting big reward:", 5*rewards_dict[type(subtask)])
                 return 5*rewards_dict[type(subtask)]
             else:
-                if self.subtask_is_doable(env=new_obs, subtask=subtask):
-                    subtask_rewards.append(self.get_reward_for_subtask(subtask, prev_location, new_location, prev_holding, new_holding, new_obs, rewards_dict[type(subtask)]))
+                if self.is_subtask_doable(env=new_obs, subtask=subtask):
+                    streward = self.get_reward_for_subtask(subtask, prev_location, new_location, prev_holding, new_holding, new_obs, rewards_dict[type(subtask)])
+                    print("reward for", subtask, "is", streward)
+                    subtask_rewards.append(streward)
                 else:
                     subtask_rewards.append(0)
-        # print(self.all_subtasks)
-        # print("Subtask rewards:", subtask_rewards)
+        
+        print("Subtask rewards for", self.all_subtasks, subtask_rewards)
 
         # sets the subtask of this agent to the task they are closest to completing
         # self.subtask = self.all_subtasks[np.argmax(subtask_rewards)]

@@ -66,6 +66,8 @@ class OvercookedEnvironment(gym.Env):
         self.action_space = Discrete(4)
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]      # actions down, up, right, left
 
+        self.training_mode = False
+
     def get_repr(self):
         return self.world.get_repr() + tuple([agent.get_repr() for agent in self.sim_agents])
     
@@ -196,12 +198,6 @@ class OvercookedEnvironment(gym.Env):
         self.world.width = x+1
         self.world.height = y
         self.world.perimeter = 2*(self.world.width + self.world.height)
-        tomato = Object(location=(0, 1), contents=RepToClass['t']())
-        tomato.last_held = 1
-        
-        counter = self.world.get_gridsquare_at((0, 1))
-        counter.acquire(tomato)
-        self.world.insert(tomato)
 
         self.observation_space = (Box(low=0, high=2, shape=(self.world.height, self.world.width), dtype=np.int32))
 
@@ -253,6 +249,9 @@ class OvercookedEnvironment(gym.Env):
     def close(self):
         return
     
+    # if training, environment lasts longer
+    def set_training(self, train):
+        self.training_mode = train
 
     def create_obs(self):
         # make a simple vector representing grid of spaces and their contents
@@ -340,12 +339,16 @@ class OvercookedEnvironment(gym.Env):
         return agents_holding
 
     def done(self):
-        # Done if the episode maxes out
-        if self.t >= self.arglist.max_num_timesteps and self.arglist.max_num_timesteps:
-            self.termination_info = "Terminating because passed {} timesteps".format(
-                    self.arglist.max_num_timesteps)
-            self.successful = False
-            return True
+        # Done once the episodes max out
+        if self.training_mode:
+            if self.t >= 150:
+                return True
+        else:
+            if self.t >= self.arglist.max_num_timesteps and self.arglist.max_num_timesteps:
+                self.termination_info = "Terminating because passed {} timesteps".format(
+                        self.arglist.max_num_timesteps)
+                self.successful = False
+                return True
         return False
 
     def delivered(self):

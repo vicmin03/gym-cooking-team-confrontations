@@ -114,17 +114,6 @@ def initialize_agents(arglist, env):
                     real_agent.set_team((len(real_agents) % 2) + 1)
                     real_agents.append(real_agent)
 
-            # # phase 5: read in agent locations when not in teams
-            # elif phase == 5:
-            #     if len(real_agents) < arglist.num_agents:
-            #         loc = line.split(' ')
-            #         real_agent = RealAgent(
-            #             arglist=arglist,
-            #             name='agent-' + str(len(real_agents) + 1),
-            #             id_color=COLORS[len(real_agents)],
-            #             recipes=recipes)
-            #         real_agents.append(real_agent)
-
     return real_agents
 
 
@@ -153,7 +142,7 @@ def initialize_buffer(env, obs, madqn_agents, MIN_REPLAY_SIZE, BUFFER_SIZE):
                 count_buffer[obs_str][action] = count_buffer.get(obs_str, np.zeros(4))[action] + 1
 
         
-        print("HERE ARE THE COUNTS:", count_buffer)
+        # print("HERE ARE THE COUNTS:", count_buffer)
         # get observation from performing actions
         new_obs, reward1, reward2, done, info = env.step(action_dict, madqn_agents)
 
@@ -250,30 +239,29 @@ def update(env, dqn_agents, replay_buffer, BATCH_SIZE, TARGET_UPDATE_FREQ, avg_l
     avg_loss.append(np.mean([loss.detach().numpy() for loss in loss_arr]))
     avg_qs.append((np.mean([qval.detach().numpy() for qval in q_vals])))
 
-def plot_loss_graph(avg_loss, avg_reward1, avg_reward2, avg_qvals):
+def plot_loss_graph(arglist, avg_loss, avg_reward1, avg_reward2, avg_qvals):
     plt.plot(avg_reward1, label='Reward for team 1')
     plt.plot(avg_reward2, label='Reward for team 2')
     plt.xlabel('Training Iteration')
     plt.ylabel('Average Reward')
     plt.title("Learning Curve - Reward")
     plt.legend()
-    plt.savefig('Rewards Curve')
+    plt.savefig('rewards_curve_'+arglist.level+arglist.num_agents)
     plt.show()
 
-    plt.plot(avg_qvals, label='Average Q-_value')
+    plt.plot(avg_qvals, label='Average Q-value')
     plt.xlabel('Training Iteration')
     plt.ylabel('Average Q-value')
     plt.title("Learning Curve - Q-values")
     plt.legend()
     plt.savefig('Q-values Curve')
-    plt.show()
 
     plt.plot(avg_loss, label='Loss')
     plt.xlabel('Training Iteration')
     plt.ylabel('Loss')
     plt.title("Learning Curve")
     plt.legend()
-    plt.savefig('Loss Curve')
+    plt.savefig('loss_curve_'+arglist.level+arglist.num_agents)
     
 
 
@@ -286,7 +274,7 @@ BUFFER_SIZE = 50000     # the max no. of samples stores in the buffer before ove
 MIN_REPLAY_SIZE = 500     # the no. of transitions we need in repay buffer before training can begin
 EPSILON_START = 1.0
 EPSILON_END = 0.02
-EPSILON_DECAY = 100000   # epsilon decreases from start_val to end_val over this many steps
+# EPSILON_DECAY = 10000   # epsilon decreases from start_val to end_val over this many steps
 TARGET_UPDATE_FREQ = 10000   # how many steps before target network params are updated from online parameters
 
 
@@ -353,7 +341,7 @@ if __name__ == '__main__':
             team1_reward = 0
             team2_reward = 0
 
-
+            env.set_training(True)
             # ---- Training Loop --------
             for step in range (0, arglist.training_steps):
                 # holds which action each agent takes
@@ -428,11 +416,12 @@ if __name__ == '__main__':
                 if agent.model_type == 'madqn':
                     agent.online_net.save_params(arglist.level)
 
-            plot_loss_graph(avg_loss, avg_reward1, avg_reward2, avg_qs)
+            plot_loss_graph(arglist, avg_loss, avg_reward1, avg_reward2, avg_qs)
 
 
         # ---- RUNNING A GAME ---------------------------------
         env.reset()
+        env.set_training(False)
         while not env.done():
             action_dict = {}
 

@@ -160,7 +160,6 @@ class RealAgent:
             for ingredient in to_hoard:
                 obj = nav_utils.get_obj(obj_string=ingredient.name, type_="is_object", state=FoodState.FRESH)
                 if len(env.world.get_object_locs(obj=obj, is_held=False)) > 0:
-                    print("ADD THEM TASKS")
                     self.incomplete_subtasks.append(recipe_utils.Chop(ingredient.name))
                     self.incomplete_subtasks.append(recipe_utils.Hoard(ingredient.name))
             

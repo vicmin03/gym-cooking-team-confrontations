@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(name='gym_cooking',
-      version='0.0.1',
+      version='0.0.2',
       description='Too Many Cooks: Overcooked environment',
-      author='Rose E. Wang',
-      email='rewang@stanford.edu',
+      author='Rose E. Wang, Victoria Mac',
+      email='rewang@stanford.edu, victoria.mac@kcl.ac.uk',
       packages=find_packages(),
       install_requires=[
       'cloudpickle==1.3.0',
