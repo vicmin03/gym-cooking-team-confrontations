@@ -153,9 +153,7 @@ class RealAgent:
         
         # add subtasks for as many ingredients as there are available in the world
        
-        # all_subtasks += [subtask for path in subtasks for subtask in path]
-        #TODO: remove below
-        all_subtasks+= self.recipes[0].get_con_actions()
+        all_subtasks += [subtask for path in subtasks for subtask in path]
 
         # Uncomment below to view graph for recipe path i
         # i = 0
@@ -361,16 +359,26 @@ class RealAgent:
 
         elif isinstance(self.new_subtask, Hoard):
 
-            self.cur_obj_count = len(set(env.world.get_object_locs(self.goal_obj, is_held=False)))
+            # gets number of ingredients currently in world (only those on counters, not including multiples stocked at spawn)
+     
+            # ingredients = map(lambda a: env.world.get_object_at(a, None, find_held_objects = False), (set(env.world.get_object_locs(self.goal_obj, is_held=False))))
+            # hoarded = list(map(lambda i: i.location, filter(lambda a: a.last_held != self.team, ingredients)))
+            # self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)), hoarded)))
+            # --- or
+            ingredient_locs= filter(lambda a: env.world.get_last_held_by_at(a) == self.team, set(env.world.get_object_locs(self.goal_obj, is_held=False)))
+            self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)), ingredient_locs)))
 
+            print("Number of", self.goal_obj, "last held by team", self.team, "is", self.cur_obj_count)
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            
 
-            # self.is_subtask_complete = lambda w: self.has_more_obj(
-            #     len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)),
-            #     w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+            # self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
+            #     (lambda o: o in set(w.get_all_object_locs(self.subtask_action_object)), 
+            #     filter(lambda a: w.get_last_held_by_at(a) == self.team, set(w.get_object_locs(self.goal_obj, is_held=False)))))))
 
-            self.is_subtask_complete = lambda w: self.has_more_obj(len(set(w.get_object_locs(self.goal_obj, is_held=False))))
+            self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_object)), 
+                    set(w.get_object_locs(self.start_obj, is_held=False))))))
+
+
 
         elif isinstance(self.new_subtask, Steal):
             # all dishes - excluding those that have already been delivered

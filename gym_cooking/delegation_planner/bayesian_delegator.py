@@ -280,8 +280,8 @@ class BayesianDelegator(Delegator):
         valid_nav_actions = self.planner.get_actions(state_repr=obs_tm1.get_repr())
 
         # Check action taken is in the list of actions available to agents in obs_tm1.
-        # assert action in valid_nav_actions, "valid_nav_actions for agent {}: {}\nlocs: {}\naction: {}".format(self.agent_name,
-        #         valid_nav_actions, list(filter(lambda a: a.location, state.sim_agents)), action)
+        assert action in valid_nav_actions, "valid_nav_actions for agent {}: {}\nlocs: {}\naction: {}".format(self.agent_name,
+                valid_nav_actions, list(filter(lambda a: a.location, state.sim_agents)), action)
 
         # If subtask allocation is joint, then find joint actions that match what the other
         # agent's action_tm1.

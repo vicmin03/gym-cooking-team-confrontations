@@ -428,7 +428,7 @@ if __name__ == '__main__':
         # Saving info   
         # bag.add_status(cur_time=info['t'], real_agents=real_agents)
 
-        print("\n TERMINATED AFTER 70 STEPS: Team 1 score:", env.get_team1_score(), "Team 2 score: ", env.get_team2_score())
+        print("\n TERMINATED AFTER", arglist.max_num_timesteps, "STEPS: Team 1 score:", env.get_team1_score(), "Team 2 score: ", env.get_team2_score())
         for agent in real_agents:
             subtasks_done = agent.get_completed_subtasks()
             print(agent.model_type, agent.name, "completed", len(subtasks_done), "subtasks:", subtasks_done)

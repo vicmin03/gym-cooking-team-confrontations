@@ -350,14 +350,7 @@ class OvercookedEnvironment(gym.Env):
                     self.arglist.max_num_timesteps)
             self.successful = False
             return True
-        
-        for ingredient in self.ingredients:
-            if ingredient == "Plate":
-                obj = nav_utils.get_obj(obj_string="Plate", type_="is_object", state=None)
-            else:
-                obj = nav_utils.get_obj(obj_string=ingredient.name, type_="is_object", state=FoodState.FRESH)
-            if len(self.world.get_object_locs(obj=obj, is_held=False)) == 0:
-                return True
+
         return False
 
     def delivered(self):
