@@ -1,0 +1,14 @@
+stock 5
+
+-tpl--
+S    S
+£    $
+S    S
+-/SS/-
+
+SimpleTomato
+SimpleLettuce
+
+teams
+1 3
+4 1

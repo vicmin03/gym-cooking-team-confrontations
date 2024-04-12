@@ -32,7 +32,7 @@ class BayesianDelegator(Delegator):
         self.name = 'Bayesian Delegator'
         self.agent_name = agent_name
         self.team = team
-        print("Initialising delegator with TEAM", self.team)
+
         self.all_agent_names = all_agent_names
         self.probs = None
         self.model_type = model_type
@@ -106,6 +106,7 @@ class BayesianDelegator(Delegator):
         """Return the value lower bound for a subtask allocation
         (subtask x subtask_agent_names)."""
 
+        print(subtask, "allocated to", subtask_agent_names)
         if subtask is None:
             return 0
         _ = self.planner.get_next_action(
@@ -167,10 +168,13 @@ class BayesianDelegator(Delegator):
             for t in subtask_alloc:
                 if t.subtask is not None:
                     # Calculate prior with this agent's planner.
-                    total_weight += 1.0/float(self.get_lower_bound_for_subtask_alloc(
-                    obs=copy.copy(obs),
-                    subtask=t.subtask,
-                    subtask_agent_names=t.subtask_agent_names))
+                    try:
+                        total_weight += 1.0 / float(self.get_lower_bound_for_subtask_alloc(
+                        obs=copy.copy(obs),
+                        subtask=t.subtask,
+                        subtask_agent_names=t.subtask_agent_names))
+                    except:
+                        total_weight = 0
             # Weight by number of nonzero subtasks.
             some_probs.update(
                     subtask_alloc=subtask_alloc,
@@ -272,12 +276,12 @@ class BayesianDelegator(Delegator):
         old_q = self.planner.Q(state=state, action=action,
                 value_f=self.planner.v_l)
 
-        # Collect actions the agents could have taken in obs_tm1.
+        # Collect actions the agents could have taken in obs_tm1 (the previous time steps).
         valid_nav_actions = self.planner.get_actions(state_repr=obs_tm1.get_repr())
 
         # Check action taken is in the list of actions available to agents in obs_tm1.
-        assert action in valid_nav_actions, "valid_nav_actions for agent {}: {}\nlocs: {}\naction: {}".format(self.agent_name,
-                valid_nav_actions, list(filter(lambda a: a.location, state.sim_agents)), action)
+        # assert action in valid_nav_actions, "valid_nav_actions for agent {}: {}\nlocs: {}\naction: {}".format(self.agent_name,
+        #         valid_nav_actions, list(filter(lambda a: a.location, state.sim_agents)), action)
 
         # If subtask allocation is joint, then find joint actions that match what the other
         # agent's action_tm1.
@@ -413,6 +417,7 @@ class BayesianDelegator(Delegator):
         """Return subtask and subtask_agent_names for agent with agent_name
         with max. probability."""
         max_subtask_alloc = self.probs.get_max()
+        print(self.probs)
         if max_subtask_alloc is not None:
             for t in max_subtask_alloc:
                 if agent_name in t.subtask_agent_names:

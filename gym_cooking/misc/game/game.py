@@ -126,7 +126,7 @@ class Game:
 
         elif isinstance(gs, Storage):
             pygame.draw.rect(self.screen, Color.COUNTER, fill)
-            # pygame.draw.rect(self.screen, (0, 255, 0), fill, 1)
+            pygame.draw.rect(self.screen, (0, 255, 0), fill, 1)
 
         return
 

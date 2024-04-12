@@ -40,8 +40,6 @@ class Network(nn.Module):
         # calculate the q values for actions from this observation 
         q_values = self(obs_t.unsqueeze(0))
 
-        print("Q_values are", q_values)
-
         max_q_index = T.argmax(q_values, dim=1)[0]
         action = max_q_index.detach().item()
         
@@ -49,9 +47,8 @@ class Network(nn.Module):
         return action
     
     def save_params(self, map):
-        print('./'+map+self.path)
-        T.save(self.state_dict(), './'+map+'-'+self.path)
+        T.save(self.state_dict(), './agent_params/'+map+'-'+self.path)
 
     def load_params(self, map):
-        print("Tried to load", './'+map+'-'+self.path)
-        self.load_state_dict(T.load('./'+map+'-'+self.path))
+        print("Loading parameters for", './'+map+'-'+self.path)
+        self.load_state_dict(T.load('./agent_params/'+map+'-'+self.path))

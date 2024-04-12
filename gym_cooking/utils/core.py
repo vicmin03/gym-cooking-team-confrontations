@@ -177,6 +177,7 @@ class Storage(Counter):
     def __init__(self, location):
         GridSquare.__init__(self, "Storage", location)
         self.rep = Rep.STORAGE
+        self.holding = []
     def get_repr(self):
         return GridSquareRepr(name=self.name, location=self.location, holding=None)
         # whether counter is free to put objects on

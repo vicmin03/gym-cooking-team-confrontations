@@ -64,7 +64,7 @@ class OvercookedEnvironment(gym.Env):
 
         # all possible actions in this environment
         self.action_space = Discrete(4)
-        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]      # actions down, up, right, left
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0), (0, 0)]      # actions down, up, right, left
 
         self.training_mode = False
 
@@ -115,6 +115,8 @@ class OvercookedEnvironment(gym.Env):
     def load_level(self, level, num_agents):
         x = 0
         y = 0
+
+        models = [self.arglist.model1, self.arglist.model2, self.arglist.model3, self.arglist.model4, self.arglist.model5, self.arglist.model6, self.arglist.model7, self.arglist.model8]
         with open('utils/levels/{}.txt'.format(level), 'r') as file:
             # Mark the phases of reading.
             phase = 0
@@ -173,10 +175,12 @@ class OvercookedEnvironment(gym.Env):
                     # if level is designed for teams
                     if len(self.sim_agents) < num_agents:
                         loc = line.split(' ')
+                        model = models[len(self.sim_agents)]
+                        is_dqn = model == 'madqn'
                         sim_agent = SimAgent(
                             name='agent-' + str(len(self.sim_agents) + 1),
                             id_color=TEAM_COLORS[len(self.sim_agents) % 2][int(len(self.sim_agents)/2)],
-                            location=(int(loc[0]), int(loc[1])))
+                            location=(int(loc[0]), int(loc[1])), dqn=is_dqn)
                         team = (len(self.sim_agents) % 2) + 1
                         sim_agent.set_team(team)
                         if team == 1:
@@ -185,6 +189,7 @@ class OvercookedEnvironment(gym.Env):
                             self.team2_agents.append('agent-' + str(len(self.sim_agents) + 1))
                         self.sim_agents.append(sim_agent)
 
+                # Phase 5: Read in agent locations for agents not on teams
                 elif phase == 5:
                     if len(self.sim_agents) < num_agents:
                         loc = line.split(' ')
@@ -286,7 +291,7 @@ class OvercookedEnvironment(gym.Env):
 
         # Check collisions.
         self.check_collisions()
-        self.obs_tm1 = copy.copy(self)
+        self.obs_tm1 = copy.copy(self)   # env at the previous timestep
 
         # Execute.
         self.execute_navigation()
@@ -340,14 +345,18 @@ class OvercookedEnvironment(gym.Env):
 
     def done(self):
         # Done once the episodes max out
-        if self.training_mode:
-            if self.t >= 150:
-                return True
-        else:
-            if self.t >= self.arglist.max_num_timesteps and self.arglist.max_num_timesteps:
-                self.termination_info = "Terminating because passed {} timesteps".format(
-                        self.arglist.max_num_timesteps)
-                self.successful = False
+        if self.t >= self.arglist.max_num_timesteps and self.arglist.max_num_timesteps:
+            self.termination_info = "Terminating because passed {} timesteps".format(
+                    self.arglist.max_num_timesteps)
+            self.successful = False
+            return True
+        
+        for ingredient in self.ingredients:
+            if ingredient == "Plate":
+                obj = nav_utils.get_obj(obj_string="Plate", type_="is_object", state=None)
+            else:
+                obj = nav_utils.get_obj(obj_string=ingredient.name, type_="is_object", state=FoodState.FRESH)
+            if len(self.world.get_object_locs(obj=obj, is_held=False)) == 0:
                 return True
         return False
 
@@ -438,7 +447,8 @@ class OvercookedEnvironment(gym.Env):
         # adding confrontation tasks to possible subtasks
         for recipe in self.recipes:
             all_subtasks += recipe.get_con_actions()
-        # print("HERE ARE ALL SUBTASKS: ", all_subtasks)
+
+        self.ingredients = sum([recipe.get_ingredients() for recipe in self.recipes], [])
         return all_subtasks
         
     def get_AB_locs_given_objs(self, agent, subtask, subtask_agent_names, start_obj, goal_obj, subtask_action_obj):
@@ -465,20 +475,18 @@ class OvercookedEnvironment(gym.Env):
             elif agent.team == 2:
                 agents = self.team2_agents
             
-            # Where to put hoarded ingredients (near team agents)
-            
-            # # finds location of other agents on this agent's team
-            # agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))     
+            # finds location of other agents on this agent's team
+            agent_locs = list(map(lambda a: a.location, list(filter(lambda a: agent.team == a.team, self.sim_agents))))     
 
-            # # find location of empty counters near team agents
-            # counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
-            # nearby_locs = []
-            # for team_agent in agent_locs:
-            #     nearby_locs += list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs))
+            # find location of empty counters near team agents
+            counter_locs = self.world.get_all_object_locs(obj=subtask_action_obj)
+            nearby_locs = []
+            for team_agent in agent_locs:
+                nearby_locs += list(filter(lambda a: abs(team_agent[0]-a[0]) < 3 and abs(team_agent[1]-a[1]) < 3, counter_locs))
             
             # can hoard at storage spaces where there isn't already an object
-            B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), self.world.get_all_object_locs(obj=subtask_action_obj)))
-
+            # B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), self.world.get_all_object_locs(obj=subtask_action_obj)))
+            B_locs = list(filter(lambda a: self.world.get_gridsquare_at(a).free(), nearby_locs))
 
             # Locations of spawn counters to get ingredients   
             ingredient_locs = list(filter(lambda a: isinstance(self.world.get_gridsquare_at(a), SpawnCounter), 
@@ -493,20 +501,23 @@ class OvercookedEnvironment(gym.Env):
         # delivered and the Delivery object.
         elif isinstance(subtask, recipe.Deliver):
             # B: Corresponding delvery locations
+            blue_delivery = nav_utils.get_obj(obj_string="DeliveryBlue", type_="is_supply", state=None)
+            blue_spaces = self.world.get_all_object_locs(obj=blue_delivery)
+            
+            red_delivery = nav_utils.get_obj(obj_string="DeliveryRed", type_="is_supply", state=None)
+            red_spaces = self.world.get_all_object_locs(obj=red_delivery)
+
             if agent.team == 1:
-                blue_delivery = nav_utils.get_obj(obj_string="DeliveryBlue", type_="is_supply", state=None)
-                B_locs = self.world.get_all_object_locs(obj=blue_delivery)
-                
+                B_locs = blue_spaces
             elif agent.team == 2:
-                red_delivery = nav_utils.get_obj(obj_string="DeliveryRed", type_="is_supply", state=None)
-                B_locs = self.world.get_all_object_locs(obj=red_delivery)
+                B_locs = red_spaces
 
             # A: Object that can be delivered.
             A_locs = self.world.get_object_locs(
                     obj=start_obj, is_held=False) + list(
                             map(lambda a: a.location, list(
                                 filter(lambda a: a.name in subtask_agent_names and a.holding == start_obj, self.sim_agents))))
-            A_locs = list(filter(lambda a: a not in B_locs, A_locs))
+            A_locs = list(filter(lambda a: a not in blue_spaces and a not in red_spaces, A_locs))
 
 
         # For Merge operator on Merge subtasks, we look at objects that can be

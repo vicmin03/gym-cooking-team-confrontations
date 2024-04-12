@@ -316,6 +316,8 @@ class World:
             elif objs[0].last_held == 2:
                 return 2
         return 0
+    
+    # returns true if there is still enough ingredients left in the world to make another recipe???
 
     def get_gridsquare_at(self, location):
         gss = list(filter(lambda o: o.location == location and\

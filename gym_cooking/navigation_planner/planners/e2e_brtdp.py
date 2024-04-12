@@ -115,6 +115,43 @@ class E2E_BRTDP:
         self.value_init(env_state=sim_state)
         return sim_state
 
+    # def get_actions(self, state_repr):
+    #     """Returns list of possible actions from current state."""
+    #     if self.subtask is None:
+    #         return [(0, 0)]
+    #     # Convert repr into an environment object.
+    #     state = self.repr_to_env_dict[state_repr]
+
+    #     subtask_agents = self.get_subtask_agents(env_state=state)
+    #     output_actions = []
+
+    #     # Return single-agent actions.
+    #     if not self.is_joint:
+    #         agent = subtask_agents[0]
+    #         output_actions = nav_utils.get_single_actions(env=state, agent=agent)
+    #     # Return joint-agent actions.
+    #     else:
+    #         # checks for collisions between actions of all combos of two agents in the same team
+    #         agent_combos = combinations(subtask_agents, 2)
+    #         for combo in agent_combos:
+    #             agent_1, agent_2 = combo[0], combo[1]
+    #             valid_actions = list(product(
+    #                 nav_utils.get_single_actions(env=state, agent=agent_1),
+    #                 nav_utils.get_single_actions(env=state, agent=agent_2)))
+    #             # Only consider action to be valid if agents do not collide.
+    #             for va in valid_actions:
+    #                 agent1, agent2 = va
+    #                 execute = state.is_collision(
+    #                     agent1_loc=agent_1.location,
+    #                     agent2_loc=agent_2.location,
+    #                     agent1_action=agent1,
+    #                     agent2_action=agent2)
+    #                 if all(execute):
+    #                     output_actions.append(va)
+
+    #     return output_actions
+
+
     def get_actions(self, state_repr):
         """Returns list of possible actions from current state."""
         if self.subtask is None:
@@ -122,7 +159,7 @@ class E2E_BRTDP:
         # Convert repr into an environment object.
         state = self.repr_to_env_dict[state_repr]
 
-        subtask_agents = self.get_subtask_agents(env_state=state)
+        subtask_agents = state.sim_agents
         output_actions = []
 
         # Return single-agent actions.
@@ -131,13 +168,19 @@ class E2E_BRTDP:
             output_actions = nav_utils.get_single_actions(env=state, agent=agent)
         # Return joint-agent actions.
         else:
-            # checks for collisions between actions of all combos of two agents in the same team
+            # checks for collisions between actions of all combos of two agents
             agent_combos = combinations(subtask_agents, 2)
             for combo in agent_combos:
                 agent_1, agent_2 = combo[0], combo[1]
-                valid_actions = list(product(
-                    nav_utils.get_single_actions(env=state, agent=agent_1),
-                    nav_utils.get_single_actions(env=state, agent=agent_2)))
+                if agent_1.dqn:
+                    agent1_actions = state.possible_actions
+                else:
+                    agent1_actions = nav_utils.get_single_actions(env=state, agent=agent_1)
+                if agent_2.dqn: 
+                    agent2_actions = state.possible_actions
+                else:
+                    agent2_actions = nav_utils.get_single_actions(env=state, agent=agent_2)
+                valid_actions = list(product(agent1_actions, agent2_actions))
                 # Only consider action to be valid if agents do not collide.
                 for va in valid_actions:
                     agent1, agent2 = va
@@ -150,7 +193,6 @@ class E2E_BRTDP:
                         output_actions.append(va)
 
         return output_actions
-
     # def get_actions(self, state_repr):
     #     """Returns list of possible actions from current state."""
     #     if self.subtask is None:
@@ -158,7 +200,8 @@ class E2E_BRTDP:
     #     # Convert repr into an environment object.
     #     state = self.repr_to_env_dict[state_repr]
 
-    #     subtask_agents = self.get_subtask_agents(env_state=state)
+    #     # dqn agents may sometimes take invalid/not recommended actions as they consider the entire action space
+    #     subtask_agents = list(filter(lambda a: a.dqn == False, self.get_subtask_agents(env_state=state)))
     #     output_actions = []
 
     #     # Return single-agent actions.
@@ -182,7 +225,6 @@ class E2E_BRTDP:
     #             if all(execute):
     #                 output_actions.append(va)
     #     return output_actions
-
 
 
 
@@ -382,66 +424,42 @@ class E2E_BRTDP:
             self.is_goal_state = lambda h: self.has_less_obj(
                  len(list(filter(lambda a: (a.last_held != team), map(lambda d: self.repr_to_env_dict[h].world.get_object_at(d, None, find_held_objects = False), self.repr_to_env_dict[h].world.get_object_locs(obj=self.goal_obj, is_held=False))))))
 
-
             self.has_less_obj = lambda x: int(x) < self.cur_obj_count
 
             self.is_subtask_complete = lambda w: self.has_less_obj(
                     len(list(filter(lambda a: (a.last_held != team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), w.get_object_locs(obj=self.goal_obj, is_held=False))))))
 
             
-            
         # for hoard subtask, condition is met once a single object has been moved to its goal location
             # goal complete if count of ingredients + 1 and it is placed on a counter
         elif isinstance(subtask, Hoard):
-            # finds locations of items on counters that were last held by this team
-            # ingredient_locs= filter(lambda a: env.world.get_last_held_by_at(a) == team, set(env.world.get_object_locs(self.goal_obj, is_held=False)))
-            
-            # self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)), ingredient_locs)))
-            # print("Currently", self.cur_obj_count, "at correct locations")
-            # self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-
-            self.is_goal_state = lambda h: self.has_more_obj(len(list(filter
-                (lambda o: o in set(self.repr_to_env_dict[h].world.get_all_object_locs(self.subtask_action_obj)), 
-                filter(lambda a: self.repr_to_env_dict[h].world.get_last_held_by_at(a) == team, set(self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))))
-
-            # if self.removed_object is not None and self.removed_object == self.goal_obj:
-            #     self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
-            #         (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
-            #         filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False))))))+1)
-            # else:
-            #     self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
-            #         (lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)), 
-            #         filter(lambda a: w.get_last_held_by_at(a) == team, set(w.get_object_locs(self.goal_obj, is_held=False)))))))
-
-            self.cur_obj_count = len(
-                    list(filter(lambda o: o in set(env.world.get_all_object_locs(
+            self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(
                             self.subtask_action_obj)),
                     env.world.get_object_locs(self.goal_obj, is_held=False))))
-            print("Current count:", self.cur_obj_count)
-
-            self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-            
-            self.is_subtask_complete = lambda w: self.has_more_obj(
-                len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)),
-                w.get_object_locs(obj=self.goal_obj, is_held=False)))))
-
-
-            # self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter(lambda a: (a.last_held != team), map(lambda d: w.get_object_at(d, None, find_held_objects = False), set(w.get_object_locs(obj=self.goal_obj, is_held=False)))))))
-
-
-        elif isinstance(subtask, Chop):
-            self.cur_obj_count = len(env.world.get_all_object_locs(self.goal_obj))
-
-            # Goal state is reached when the number of desired objects has increased.
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
             self.is_goal_state = lambda h: self.has_more_obj(
-                    len(self.repr_to_env_dict[h].world.get_all_object_locs(self.goal_obj)))
+                    len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+                    self.repr_to_env_dict[h].world.get_object_locs(self.goal_obj, is_held=False)))))
+
             if self.removed_object is not None and self.removed_object == self.goal_obj:
                 self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(w.get_all_object_locs(self.goal_obj)) + 1)
+                        len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+                        w.get_object_locs(self.goal_obj, is_held=False)))) + 1)
             else:
                 self.is_subtask_complete = lambda w: self.has_more_obj(
-                        len(w.get_all_object_locs(self.goal_obj)))
+                        len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+                        w.get_object_locs(obj=self.goal_obj, is_held=False)))))
+            # self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_obj)),
+            #     env.world.get_object_locs(self.goal_obj, is_held=False))))
+
+            # self.has_more_obj = lambda x: int(x) > self.cur_obj_count
+
+            # self.is_goal_state = lambda h: self.has_more_obj(len(list(filter(lambda o: o in set(self.repr_to_env_dict[h].world.get_all_object_locs(self.subtask_action_obj)),
+            #     self.repr_to_env_dict[h].world.get_object_locs(obj=self.goal_obj, is_held=False)))))
+
+            # self.is_subtask_complete = lambda w: self.has_more_obj(
+            #     len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_obj)),
+            #     w.get_object_locs(obj=self.goal_obj, is_held=False)))))
 
         else:
             # Get current count of desired objects.
@@ -460,12 +478,8 @@ class E2E_BRTDP:
 
     def _configure_planner_space(self, subtask_agent_names):
         """Configure planner to either plan in joint space or single-agent space."""
-        # print(subtask_agent_names)
-        # assert len(subtask_agent_names) <= 2, "Cannot have more than 2 agents! Hm... {}".format(subtask_agent_names)
 
-        # self.is_joint = len(subtask_agent_names) == 2
-
-        assert len(subtask_agent_names) <= 4, "Cannot have more than 2 agents! Hm... {}".format(subtask_agent_names)
+        assert len(subtask_agent_names) <= 4, "Cannot have more than 4 agents on one team! Hm... {}".format(subtask_agent_names)
 
         self.is_joint = len(subtask_agent_names) >=2 
 
