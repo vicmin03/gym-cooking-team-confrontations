@@ -1,14 +1,15 @@
 stock 5
 
--tpl--
-S    S
-£    $
-S    S
--/SS/-
+-t---t-
+S     S
+£     $
+p     p
+-/S-S/-
 
 SimpleTomato
-SimpleLettuce
 
 teams
+1 1
+5 1
 1 3
-4 1
+5 3

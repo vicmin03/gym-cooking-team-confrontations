@@ -50,5 +50,6 @@ class Network(nn.Module):
         T.save(self.state_dict(), './agent_params/'+map+'-'+self.path)
 
     def load_params(self, map):
-        print("Loading parameters for", './'+map+'-'+self.path)
         self.load_state_dict(T.load('./agent_params/'+map+'-'+self.path))
+        print("Loaded parameters for", './'+map+'-'+self.path)
+   

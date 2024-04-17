@@ -320,8 +320,11 @@ if __name__ == '__main__':
                 if agent.model_type == 'madqn':
                     agent.target_net.load_state_dict(agent.online_net.state_dict())
 
+            env.set_training(True)
+
             # replay buffer to keep track of action history and transitions
                 # to start, fill replay buffer with random observations
+            print("Initialising replay buffer...")
             replay_buffer = initialize_buffer(env, obs, real_agents, MIN_REPLAY_SIZE, BUFFER_SIZE)
 
             # reward buffer keeps history of rewards, as tuples for rewards of each team (team1_reward, team2_reward)
@@ -330,7 +333,7 @@ if __name__ == '__main__':
             team1_reward = 0
             team2_reward = 0
 
-            env.set_training(True)
+            print("Ready to start training")
             # ---- Training Loop --------
             for step in range (0, TRAINING_STEPS):
                 # holds which action each agent takes

@@ -126,7 +126,6 @@ class Game:
 
         elif isinstance(gs, Storage):
             pygame.draw.rect(self.screen, Color.COUNTER, fill)
-            pygame.draw.rect(self.screen, (0, 255, 0), fill, 1)
 
         return
 
@@ -163,12 +162,7 @@ class Game:
                 obj.merge(plate)
         else:
             self.draw(obj.full_name, self.tile_size, self.scaled_location(obj.location))
-        if obj.last_held is not None:
-            if obj.last_held == 1:
-                pygame.draw.circle(self.screen, (0, 0, 255), self.scaled_location(obj.location), 5, 0)
-            if obj.last_held == 2:
-                pygame.draw.circle(self.screen, (255, 0, 0), self.scaled_location(obj.location), 5, 0)
-
+            
     def scaled_location(self, loc):
         """Return top-left corner of scaled location given coordinates loc, e.g. (3, 4)"""
         return tuple(self.scale * np.asarray(loc))

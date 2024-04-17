@@ -77,3 +77,26 @@ For more information on customisable parameters and their role, use the command:
 
 Loss and average reward graphs are automatically generated whenever a new MADQN agent is trained. 
 These can be found in the folder gym-cooking/graphs and are named corresponding to the level and number of agents being trained.
+
+- Experiment 1a
+Re-train agents with:
+`python3 main.py --num-agents 2 --level small-map_tomato_teams --model1 madqn--model2 madqn --train --batch-size 512 --training-steps 10000`
+
+Then observe how they play by running:
+`python main.py--num-agents 2 --level small-map_tomato_teams --model1 madqn--model2 madqn --record`
+
+- Experiment 1b 
+Train agents with:
+`python3 main.py --num-agents 2 --level small-map_tomato_teams --model1 madqn--model2 madqn --train --batch-size 512 --training-steps 50000`
+
+- Experiment 2a
+Train agents with:
+`python3 main.py --num-agents 2 --level small-map_tomato_teams --model1 madqn--model2 greedy --train --batch-size 512 --training-steps 50000`
+
+- Experiment 2b
+Train agents with:
+`python3 main.py --num-agents 2 --level odd-stock_tomato_teams --model1 madqn--model2 greedy --train --batch-size 512 --training-steps 50000`
+
+- Experiment 2c
+Train agents with:
+`python3 main.py --num-agents 2 --level open-divider_salad_teams --model1 madqn--model2 greedy --train --batch-size 512 --training-steps 100000`

@@ -64,7 +64,7 @@ class OvercookedEnvironment(gym.Env):
 
         # all possible actions in this environment
         self.action_space = Discrete(4)
-        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0), (0, 0)]      # actions down, up, right, left
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0), (0, 0)]      # actions down, up, right, left, none
 
         self.training_mode = False
 
@@ -204,6 +204,21 @@ class OvercookedEnvironment(gym.Env):
         self.world.height = y
         self.world.perimeter = 2*(self.world.width + self.world.height)
 
+        # TO TEST: Add a merged dish belonging to other team to test steal action
+        tomato = Object(location=(0, 3), contents=RepToClass['t']())
+        plate = Object(location=(0, 3), contents=RepToClass['p']())
+        tomato.last_held = 2
+        
+        counter = self.world.get_gridsquare_at((0, 3))
+        counter.acquire(tomato)
+        self.world.insert(tomato)
+        tomato.chop()
+        tomato.merge(plate)
+
+        dish = self.world.get_object_at((0, 3), None, False)
+        self.world.insert(dish)
+		
+
         self.observation_space = (Box(low=0, high=2, shape=(self.world.height, self.world.width), dtype=np.int32))
 
     def reset(self):
@@ -281,9 +296,11 @@ class OvercookedEnvironment(gym.Env):
     def step(self, action_dict, agents):
         # Track internal environment info.
         self.t += 1
-        print("===============================")
-        print("[environment.step] @ TIMESTEP {}".format(self.t))
-        print("===============================")
+        
+        if not self.training_mode:
+            print("===============================")
+            print("[environment.step] @ TIMESTEP {}".format(self.t))
+            print("===============================")
 
         # Get actions.
         for sim_agent in self.sim_agents:
@@ -382,19 +399,10 @@ class OvercookedEnvironment(gym.Env):
 
         # get reward for each agent completing a subtask, then combine rewards for agents on the same team
         for agent in agents:
-            # if agent.model_type == 'madqn':
             if agent.team == 1:
                 r1 += agent.get_reward(action_dict, old_obs, new_obs)
             elif agent.team == 2:
                 r2 += agent.get_reward(action_dict, old_obs, new_obs)
-            # else:
-            #     if agent.team == 1:
-            #         r1 += agent.get_reward(action_dict, old_obs, new_obs)
-            #     elif agent.team == 2:
-            #         r2 += agent.get_reward(action_dict, old_obs, new_obs)
-            #     # def get_reward(self, old_obs, new_obs, subtask, goal_loc):
-            
-        
         
         
         # return two rewards (team1, team2)

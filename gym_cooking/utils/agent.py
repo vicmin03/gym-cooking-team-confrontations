@@ -73,8 +73,7 @@ class RealAgent:
         self.online_net = online_net
         self.target_net = target_net
 
-        # self.optimizer = T.optim.Adam(online_net.parameters(), lr=5e-4)
-        self.optimizer = T.optim.Adam(online_net.parameters(), lr=0.0005)
+        self.optimizer = T.optim.Adam(online_net.parameters(), lr=5e-4)
 
 
     def __str__(self):
@@ -153,15 +152,16 @@ class RealAgent:
         
         # add subtasks for as many ingredients as there are available in the world
        
-        all_subtasks += [subtask for path in subtasks for subtask in path]
-
+        # all_subtasks += [subtask for path in subtasks for subtask in path]
+        all_subtasks += self.get_competitive_subtasks()
+        print("HERE IS ALL SUBTASKS:", all_subtasks)
         # Uncomment below to view graph for recipe path i
         # i = 0
         # pg = recipe_utils.make_predicate_graph(self.sw.initial, recipe_paths[i])
         # ag = recipe_utils.make_action_graph(self.sw.initial, recipe_paths[i])
         return all_subtasks
     
-    def get_competitive_subtasks(self, world):
+    def get_competitive_subtasks(self):
         comp_subtasks = []
         for recipe in self.recipes:
             comp_subtasks += recipe.get_con_actions()
@@ -172,14 +172,6 @@ class RealAgent:
         """Initializing subtasks and subtask allocator, Bayesian Delegation."""
         self.incomplete_subtasks = []
 
-        # if self.hoarder:    
-        #     print("HOARDER AGENT COMING THROUGH")
-        #     for ingredient in self.ingredients:
-        #         obj = nav_utils.get_obj(obj_string=ingredient.name, type_="is_object", state=FoodState.FRESH)
-        #         if len(env.world.get_object_locs(obj=obj, is_held=False)) > 0:
-        #             self.incomplete_subtasks.append(recipe_utils.Hoard(ingredient.name))
-        
-        # if len(self.incomplete_subtasks) == 0:
         self.incomplete_subtasks += self.get_subtasks(world=env.world)
         self.delegator = BayesianDelegator(
                 agent_name=self.name,
@@ -360,20 +352,10 @@ class RealAgent:
         elif isinstance(self.new_subtask, Hoard):
 
             # gets number of ingredients currently in world (only those on counters, not including multiples stocked at spawn)
-     
-            # ingredients = map(lambda a: env.world.get_object_at(a, None, find_held_objects = False), (set(env.world.get_object_locs(self.goal_obj, is_held=False))))
-            # hoarded = list(map(lambda i: i.location, filter(lambda a: a.last_held != self.team, ingredients)))
-            # self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)), hoarded)))
-            # --- or
             ingredient_locs= filter(lambda a: env.world.get_last_held_by_at(a) == self.team, set(env.world.get_object_locs(self.goal_obj, is_held=False)))
             self.cur_obj_count = len(list(filter(lambda o: o in set(env.world.get_all_object_locs(self.subtask_action_object)), ingredient_locs)))
 
-            print("Number of", self.goal_obj, "last held by team", self.team, "is", self.cur_obj_count)
             self.has_more_obj = lambda x: int(x) > self.cur_obj_count
-
-            # self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter
-            #     (lambda o: o in set(w.get_all_object_locs(self.subtask_action_object)), 
-            #     filter(lambda a: w.get_last_held_by_at(a) == self.team, set(w.get_object_locs(self.goal_obj, is_held=False)))))))
 
             self.is_subtask_complete = lambda w: self.has_more_obj(len(list(filter(lambda o: o in set(w.get_all_object_locs(self.subtask_action_object)), 
                     set(w.get_object_locs(self.start_obj, is_held=False))))))

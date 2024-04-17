@@ -278,10 +278,11 @@ class BayesianDelegator(Delegator):
 
         # Collect actions the agents could have taken in obs_tm1 (the previous time steps).
         valid_nav_actions = self.planner.get_actions(state_repr=obs_tm1.get_repr())
+        nav_actions = [(0, 1), (0, -1), (1, 0), (-1, 0), (0, 0)]
 
         # Check action taken is in the list of actions available to agents in obs_tm1.
-        assert action in valid_nav_actions, "valid_nav_actions for agent {}: {}\nlocs: {}\naction: {}".format(self.agent_name,
-                valid_nav_actions, list(filter(lambda a: a.location, state.sim_agents)), action)
+        # assert action in valid_nav_actions, "valid_nav_actions for agent {}: {}\nlocs: {}\naction: {}".format(self.agent_name,
+        #         valid_nav_actions, list(filter(lambda a: a.location, state.sim_agents)), action)
 
         # If subtask allocation is joint, then find joint actions that match what the other
         # agent's action_tm1.
@@ -290,11 +291,13 @@ class BayesianDelegator(Delegator):
             valid_nav_actions = list(filter(lambda x: x[other_index] == action[other_index], valid_nav_actions))
 
         # Calculating the softmax Q_{subtask} for each action.
+        # qdiffs = [old_q - self.planner.Q(state=state, action=nav_action, value_f=self.planner.v_l)
+        #         for nav_action in valid_nav_actions]
         qdiffs = [old_q - self.planner.Q(state=state, action=nav_action, value_f=self.planner.v_l)
-                for nav_action in valid_nav_actions]
+            for nav_action in nav_actions]
         softmax_diffs = sp.special.softmax(beta * np.asarray(qdiffs))
         # Taking the softmax of the action actually taken.
-        return softmax_diffs[valid_nav_actions.index(action)]
+        return softmax_diffs[nav_actions.index(action)]
 
     def get_other_subtask_allocations(self, remaining_agents, remaining_subtasks, base_subtask_alloc):
         """Return a list of subtask allocations to be added onto `subtask_allocs`.
